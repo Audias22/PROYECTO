@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>UniBus — Modo Conductor</title>
+<style>
+  body{font-family:system-ui;max-width:640px;margin:24px auto;padding:0 16px}
+  fieldset{border:1px solid #ddd;border-radius:12px;padding:12px}
+  label{display:block;margin:8px 0 4px} select,button{padding:10px;font-size:16px}
+  .muted{color:#666}
+</style>
+
+<h2>Modo Conductor</h2>
+<fieldset>
+  <label>Bus</label>
+  <select id="bus">
+    <option value="A">A — vía Cabañas</option>
+    <option value="B">B — vía Huite</option>
+  </select>
+  <div style="margin-top:10px">
+    <button id="btnStart">Iniciar</button>
+    <button id="btnStop" disabled>Detener</button>
+  </div>
+  <p id="log" class="muted">Listo.</p>
+</fieldset>
+
+<script type="module" src="./firebase-init.js"></script>
+<script type="module">
+  import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { ref, set } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+  const { auth, rtdb } = window.__firebase;
+
+  const log = (m)=>document.getElementById('log').textContent=m;
+  await signInAnonymously(auth); log("Conectado (anónimo).");
+
+  let watchId=null, wake=null, lastSent=0;
+  const btnStart=document.getElementById('btnStart');
+  const btnStop =document.getElementById('btnStop');
+
+  btnStart.onclick = async () => {
+    const bus = document.getElementById('bus').value;
+    if(!navigator.geolocation) { alert("Tu navegador no soporta geolocalización"); return; }
+    try{ if('wakeLock' in navigator){ wake = await navigator.wakeLock.request('screen'); } }catch{}
+    watchId = navigator.geolocation.watchPosition(async pos=>{
+      const now = Date.now(); if(now - lastSent < 4000) return; lastSent = now;  // cada ~4s
+      const { latitude:lat, longitude:lng, accuracy:acc, speed } = pos.coords;
+      const speedKmH = speed ? Math.max(0, speed*3.6) : 0;
+      await set(ref(rtdb, `/buses/${bus}`), { lat, lng, acc, speedKmH, ts: now });
+      log(`Enviando (${bus}) lat:${lat.toFixed(5)} lng:${lng.toFixed(5)} vel:${speedKmH.toFixed(1)} km/h`);
+    }, err => log("ERROR GPS: "+err.message), { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
+    btnStart.disabled=true; btnStop.disabled=false;
+  };
+
+  btnStop.onclick = ()=>{
+    if(watchId!=null) navigator.geolocation.clearWatch(watchId);
+    if(wake) try{ wake.release(); }catch{}
+    watchId=null; log("Detenido.");
+    btnStart.disabled=false; btnStop.disabled=true;
+  };
+</script>
+</html>

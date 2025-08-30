@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>UniBus — Mapa en vivo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  body{margin:0;font-family:system-ui}
+  #map{height:100vh;width:100vw}
+  .legend{position:absolute;top:10px;left:10px;background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999}
+</style>
+
+<div class="legend">
+  <b>UniBus Zacapa</b><br>
+  <span style="color:#2563eb">●</span> Bus A (Cabañas) &nbsp; 
+  <span style="color:#16a34a">●</span> Bus B (Huite)
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="./firebase-init.js"></script>
+<script type="module">
+  import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+  const { rtdb } = window.__firebase;
+
+  const zacapa = [14.972, -89.53];
+  const map = L.map('map').setView(zacapa, 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(map);
+
+  const markers = {
+    A: L.circleMarker(zacapa, {radius:8, color:'#2563eb'}).addTo(map).bindPopup('Bus A'),
+    B: L.circleMarker(zacapa, {radius:8, color:'#16a34a'}).addTo(map).bindPopup('Bus B')
+  };
+
+  function update(bus, val){
+    if(!val) return;
+    markers[bus].setLatLng([val.lat, val.lng])
+      .setPopupContent(`Bus ${bus}<br>vel: ${(val.speedKmH||0).toFixed?.(1)||0} km/h<br>${new Date(val.ts).toLocaleTimeString()}`);
+  }
+
+  onValue(ref(rtdb, '/buses/A'), snap => update('A', snap.val()));
+  onValue(ref(rtdb, '/buses/B'), snap => update('B', snap.val()));
+</script>
+</html>

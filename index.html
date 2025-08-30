@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>UniBus Zacapa — Operación</title>
+<style>
+  :root{
+    --bg:#0b1220; --card:#111a2e; --muted:#8aa0c3; --text:#e6eefc;
+    --primary:#4f7cff; --accent:#22c55e; --danger:#ef4444; --line:#1e2a44;
+  }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+  .container{max-width:1100px;margin:24px auto;padding:0 16px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .badge{background:#12224a;border:1px solid #243b6b;color:#9db6e9;padding:4px 10px;border-radius:999px;font-weight:600}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:16px 0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:820px){ .row{grid-template-columns:1fr} }
+  label{display:block;font-size:13px;color:var(--muted);margin:4px 0}
+  input,select,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0e162a;color:var(--text);outline:none}
+  input:focus,select:focus{border-color:#2d4b8a}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#0f1a31;color:var(--text);cursor:pointer}
+  .btn-primary{background:var(--primary);border-color:#3254bf}
+  .btn-ghost{background:transparent}
+  .btn-danger{background:#371a1a;border-color:#3d2626;color:#ffb4b4}
+  .muted{color:var(--muted)}
+  .pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#14203f;border:1px solid #20325e;color:#a6b9e8;font-size:12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left}
+  th{color:#9fb4da;font-size:13px}
+  .pay{display:flex;gap:6px;align-items:center}
+  .pay input{width:auto}
+  .totals{display:flex;gap:16px;flex-wrap:wrap;margin:.3rem 0 0}
+  .totals b{color:#fff}
+  .tag{font-weight:700;color:#ccd9fb}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1 style="margin:0">UniBus Zacapa</h1>
+    <span class="badge">MVP</span>
+    <span class="pill" id="jornadaPill">Sábado: —</span>
+  </header>
+  <p class="muted" style="margin-top:-4px">Registrar <b class="tag">reservas</b> del <b>sábado vigente</b> y <b class="tag">marcar pagos</b> (Q20/Q40). Todo se guarda en Firebase.</p>
+
+  <!-- ACCESO -->
+  <section class="card" id="authCard">
+    <h3 style="margin:0 0 10px">Acceso</h3>
+    <div class="row">
+      <div><label>Email</label><input id="email" type="email" placeholder="admin@ejemplo.com"></div>
+      <div><label>Contraseña</label><input id="pass" type="password" placeholder="******"></div>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn btn-primary" id="btnLogin">Iniciar sesión</button>
+      <button class="btn btn-ghost" id="btnLogout" style="display:none">Cerrar sesión</button>
+      <span id="who" class="muted"></span>
+    </div>
+  </section>
+
+  <!-- NUEVA RESERVA -->
+  <section class="card" id="formCard" style="display:none">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <h3 style="margin:0">Nueva reserva</h3>
+      <div class="actions">
+        <button class="btn" id="btnHoy">Sábado vigente</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:6px">
+      <div><label>Nombre</label><input id="nombre" autocomplete="off"></div>
+      <div><label>Teléfono</label><input id="telefono" autocomplete="off"></div>
+    </div>
+
+    <div class="row">
+      <div><label>Universidad</label><input id="universidad" autocomplete="off"></div>
+      <div>
+        <label>Bus (ruta)</label>
+        <select id="bus">
+          <option value="A">A — San Vicente → Cabañas → Zacapa</option>
+          <option value="B">B — San Vicente → Huite → Zacapa</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Tipo de viaje</label>
+        <select id="tipo">
+          <option value="IDA_VUELTA_16">Ida y vuelta 4:00 pm</option>
+          <option value="IDA_VUELTA_17_30">Ida y vuelta 5:30 pm</option>
+          <option value="SOLO_IDA">Solo ida</option>
+          <option value="SOLO_VUELTA_16">Solo vuelta 4:00 pm</option>
+          <option value="SOLO_VUELTA_17_30">Solo vuelta 5:30 pm</option>
+        </select>
+      </div>
+      <div>
+        <label>Parada</label>
+        <input id="parada" placeholder="San Vicente / Cabañas / Huite / Univ.">
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:10px">
+      <button class="btn btn-primary" id="btnGuardar">Guardar reserva</button>
+      <span id="precioLabel" class="muted">Precio sugerido: Q40.00</span>
+    </div>
+  </section>
+
+  <!-- LISTA -->
+  <section class="card" id="listCard" style="display:none">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <h3 style="margin:0">Lista de pasajeros</h3>
+      <div class="row" style="grid-template-columns:1fr 1fr;gap:8px;max-width:520px">
+        <input id="filtroTxt" placeholder="Filtrar por nombre/universidad…">
+        <select id="filtroBus">
+          <option value="">Todos los buses</option>
+          <option value="A">Bus A</option>
+          <option value="B">Bus B</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="totals muted">
+      <span>Registros: <b id="tRegs">0</b></span>
+      <span>Recaudado: <b id="tRec">Q0.00</b></span>
+      <span>Pendiente: <b id="tPen">Q0.00</b></span>
+    </div>
+
+    <div style="overflow:auto;margin-top:8px">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Nombre</th><th>Univ.</th><th>Bus</th><th>Tipo</th><th>Precio</th><th>Teléfono</th><th>Pagó</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- Firebase común -->
+<script type="module" src="./firebase-init.js"></script>
+
+<!-- Página -->
+<script type="module">
+  import { signInWithEmailAndPassword, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import {
+    collection, addDoc, serverTimestamp, onSnapshot,
+    query, where, orderBy, doc, updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+  const { auth, db } = window.__firebase;
+
+  // ===== Helpers de fecha y precio =====
+  const ymd = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  function sabadoVigente(base=new Date()){
+    const d = new Date(base); d.setHours(0,0,0,0);
+    const w = d.getDay();               // 0..6
+    const diff = w===6 ? 0 : (6 - w + 7) % 7;
+    d.setDate(d.getDate() + diff);      // hoy si es sábado, o el próximo
+    return d;
+  }
+  let JORNADA = ymd(sabadoVigente());
+  const precioPorTipo = t => (t.startsWith("IDA_VUELTA") ? 40 : 20);
+
+  const pill = document.getElementById('jornadaPill');
+  const setPill = ()=> pill.textContent = 'Sábado: ' + JORNADA;
+  setPill();
+
+  // ===== UI refs =====
+  const authCard = document.getElementById('authCard');
+  const formCard = document.getElementById('formCard');
+  const listCard = document.getElementById('listCard');
+  const email = document.getElementById('email');
+  const pass  = document.getElementById('pass');
+  const who   = document.getElementById('who');
+  const btnLogin  = document.getElementById('btnLogin');
+  const btnLogout = document.getElementById('btnLogout');
+  const btnHoy    = document.getElementById('btnHoy');
+  const tipoSel   = document.getElementById('tipo');
+  const precioLabel = document.getElementById('precioLabel');
+
+  const syncPrecio = () => precioLabel.textContent = "Precio sugerido: Q" + precioPorTipo(tipoSel.value) + ".00";
+  tipoSel.addEventListener("change", syncPrecio); syncPrecio();
+
+  // ===== Auth =====
+  btnLogin.onclick  = async ()=> { await signInWithEmailAndPassword(auth, email.value, pass.value); };
+  btnLogout.onclick = ()=> signOut(auth);
+
+  onAuthStateChanged(auth, (u)=>{
+    const logged = !!u;
+    authCard.style.opacity  = logged ? 0.6 : 1;
+    btnLogin.style.display  = logged ? "none" : "inline-block";
+    btnLogout.style.display = logged ? "inline-block" : "none";
+    who.textContent = logged ? ("Conectado: " + (u.email || u.uid)) : "Sin sesión";
+    formCard.style.display = logged ? "block" : "none";
+    listCard.style.display = logged ? "block" : "none";
+  });
+
+  // ===== Jornada: botón “Sábado vigente” =====
+  btnHoy.onclick = ()=>{
+    JORNADA = ymd(sabadoVigente());
+    setPill();
+    attachSnapshot(); // re-suscribe la lista
+  };
+
+  // ===== Guardar reserva =====
+  document.getElementById('btnGuardar').onclick = async ()=>{
+    const data = {
+      jornadaId: JORNADA,
+      nombre: document.getElementById('nombre').value.trim(),
+      telefono: document.getElementById('telefono').value.trim(),
+      universidad: document.getElementById('universidad').value.trim(),
+      bus: document.getElementById('bus').value,
+      tipo: document.getElementById('tipo').value,
+      parada: document.getElementById('parada').value.trim(),
+      precio: precioPorTipo(document.getElementById('tipo').value),
+      pago: false,
+      creadoEn: serverTimestamp()
+    };
+    if(!data.nombre){ alert("Nombre es obligatorio"); return; }
+    await addDoc(collection(db, 'reservas'), data);
+    ['nombre','telefono','universidad','parada'].forEach(id=>document.getElementById(id).value='');
+  };
+
+  // ===== Listado en vivo + filtros =====
+  const tbody = document.getElementById('tbody');
+  const filtroTxt = document.getElementById('filtroTxt');
+  const filtroBus = document.getElementById('filtroBus');
+
+  let unsub = null;
+  function attachSnapshot(){
+    if(unsub) unsub();
+    const qBase = query(
+      collection(db,'reservas'),
+      where('jornadaId','==', JORNADA),
+      orderBy('creadoEn','asc')
+    );
+    unsub = onSnapshot(qBase, (snap)=> render(snap.docs.map(d => ({id:d.id, ...d.data()}))));
+  }
+  attachSnapshot();
+
+  function render(rows){
+    const txt = (filtroTxt.value||'').toLowerCase();
+    const bus = filtroBus.value||'';
+    const filtered = rows.filter(r=>{
+      const okTxt = !txt || (r.nombre?.toLowerCase().includes(txt) || r.universidad?.toLowerCase().includes(txt));
+      const okBus = !bus || r.bus===bus;
+      return okTxt && okBus;
+    });
+
+    tbody.innerHTML = "";
+    let i=0, rec=0, pen=0;
+    for(const r of filtered){
+      i++;
+      if(r.pago) rec += Number(r.precio||0); else pen += Number(r.precio||0);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i}</td>
+        <td>${r.nombre||""}</td>
+        <td>${r.universidad||""}</td>
+        <td>${r.bus}</td>
+        <td>${(r.tipo||"").replaceAll("_"," ").toLowerCase()}</td>
+        <td>Q${r.precio||0}.00</td>
+        <td>${r.telefono||""}</td>
+        <td class="pay"><input type="checkbox" ${r.pago?"checked":""}><span class="muted">${r.pago?"Pagado":"Pendiente"}</span></td>
+      `;
+      const chk = tr.querySelector('input[type=checkbox]');
+      const label = tr.querySelector('.pay span');
+      chk.addEventListener('change', async ()=>{
+        await updateDoc(doc(db,'reservas', r.id), { pago: chk.checked });
+        label.textContent = chk.checked ? "Pagado" : "Pendiente";
+      });
+      tbody.appendChild(tr);
+    }
+    document.getElementById('tRegs').textContent = String(i);
+    document.getElementById('tRec').textContent = "Q"+rec+".00";
+    document.getElementById('tPen').textContent = "Q"+pen+".00";
+  }
+
+  filtroTxt.addEventListener('input', ()=>attachSnapshot());
+  filtroBus.addEventListener('change', ()=>attachSnapshot());
+</script>
+</body>
+</html>

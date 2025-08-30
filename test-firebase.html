@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Test Firebase — UniBus Zacapa</title>
+
+  <!-- SDKs (compat, más simple para probar) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 780px; margin: 48px auto; line-height: 1.5; }
+    h1 { margin-bottom: 8px; }
+    #out { background:#0f172a; color:#e2e8f0; padding:16px; border-radius:10px; white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Test Firebase — UniBus Zacapa</h1>
+  <p>Si ves <b>Auth OK</b>, <b>Firestore OK</b> y <b>RTDB OK</b> abajo, todo quedó bien ✅</p>
+  <pre id="out">Cargando…</pre>
+
+  <script>
+    // CONFIG DE TU PROYECTO (con databaseURL para RTDB)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDokAFIRVJRSkuusmS1qYZR_bZK0QMJXoQ",
+      authDomain: "unibus-zacapa-prod.firebaseapp.com",
+      projectId: "unibus-zacapa-prod",
+      storageBucket: "unibus-zacapa-prod.firebasestorage.app",
+      messagingSenderId: "406353089667",
+      appId: "1:406353089667:web:1f9cf1b2e4867f25f2f7b6",
+      databaseURL: "https://unibus-zacapa-prod-default-rtdb.firebaseio.com"
+    };
+
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+    const rtdb = firebase.database();
+
+    const outEl = document.getElementById('out');
+    const log = (m) => outEl.textContent += m + "\n";
+
+    // PRUEBA: login anónimo + escritura/lectura en Firestore y RTDB
+    auth.signInAnonymously().then(async () => {
+      log("Auth: OK (anónimo) uid=" + auth.currentUser.uid);
+
+      // Firestore: crear y leer una jornada de prueba
+      const id = 'TEST-' + new Date().toISOString().slice(0,10);
+      const jornadaRef = db.collection('jornadas').doc(id);
+      await jornadaRef.set({
+        estado: 'abierta',
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const snap = await jornadaRef.get();
+      log("Firestore OK: " + JSON.stringify(snap.data()));
+
+      // RTDB: escribir y leer posición del Bus A
+      const busRef = rtdb.ref('/buses/A');
+      await busRef.set({ lat: 14.97, lng: -89.53, acc: 15, speedKmH: 0, ts: Date.now() });
+      const s2 = await busRef.get();
+      log("RTDB OK: " + JSON.stringify(s2.val()));
+
+      log("¡Listo! Firestore y Realtime Database funcionando.");
+    }).catch(err => {
+      log("ERROR: " + err.code + " — " + err.message);
+      log("Revisa que Authentication (anónima) esté habilitada y que las reglas estén publicadas.");
+    });
+  </script>
+</body>
+</html>
