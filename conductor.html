@@ -1,28 +1,37 @@
 <!doctype html>
 <html lang="es">
+<head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>UniBus — Modo Conductor</title>
 <style>
-  body{font-family:system-ui;max-width:640px;margin:24px auto;padding:0 16px}
-  fieldset{border:1px solid #ddd;border-radius:12px;padding:12px}
-  label{display:block;margin:8px 0 4px} select,button{padding:10px;font-size:16px}
-  .muted{color:#666}
+  :root{--bg:#0b1220;--card:#111a2e;--text:#e6eefc;--muted:#8aa0c3;--line:#1e2a44;--primary:#4f7cff}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui}
+  .container{max-width:720px;margin:28px auto;padding:0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin:6px 0}
+  select,button{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:#0e162a;color:var(--text)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn-primary{background:var(--primary);border-color:#3254bf}
 </style>
-
-<h2>Modo Conductor</h2>
-<fieldset>
-  <label>Bus</label>
-  <select id="bus">
-    <option value="A">A — vía Cabañas</option>
-    <option value="B">B — vía Huite</option>
-  </select>
-  <div style="margin-top:10px">
-    <button id="btnStart">Iniciar</button>
-    <button id="btnStop" disabled>Detener</button>
+</head>
+<body>
+<div class="container">
+  <h2 style="margin:0 0 10px">Modo Conductor</h2>
+  <div class="card">
+    <label>Bus</label>
+    <select id="bus">
+      <option value="A">A — vía Cabañas</option>
+      <option value="B">B — vía Huite</option>
+    </select>
+    <div class="row" style="margin-top:10px">
+      <button id="btnStart" class="btn-primary">Iniciar</button>
+      <button id="btnStop" disabled>Detener</button>
+    </div>
+    <p id="log" style="color:#9fb4da;margin:10px 0 0">Listo.</p>
   </div>
-  <p id="log" class="muted">Listo.</p>
-</fieldset>
+  <p style="color:#8aa0c3">Nota: requiere HTTPS (Vercel lo da) o <b>http://localhost</b>.</p>
+</div>
 
 <script type="module" src="./firebase-init.js"></script>
 <script type="module">
@@ -30,32 +39,28 @@
   import { ref, set } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
   const { auth, rtdb } = window.__firebase;
 
-  const log = (m)=>document.getElementById('log').textContent=m;
+  const log = m => document.getElementById('log').textContent = m;
   await signInAnonymously(auth); log("Conectado (anónimo).");
 
   let watchId=null, wake=null, lastSent=0;
-  const btnStart=document.getElementById('btnStart');
-  const btnStop =document.getElementById('btnStop');
-
-  btnStart.onclick = async () => {
+  btnStart.onclick = async ()=>{
     const bus = document.getElementById('bus').value;
-    if(!navigator.geolocation) { alert("Tu navegador no soporta geolocalización"); return; }
+    if(!navigator.geolocation){ alert("Sin soporte de geolocalización"); return; }
     try{ if('wakeLock' in navigator){ wake = await navigator.wakeLock.request('screen'); } }catch{}
     watchId = navigator.geolocation.watchPosition(async pos=>{
-      const now = Date.now(); if(now - lastSent < 4000) return; lastSent = now;  // cada ~4s
+      const now = Date.now(); if(now-lastSent<4000) return; lastSent=now;
       const { latitude:lat, longitude:lng, accuracy:acc, speed } = pos.coords;
       const speedKmH = speed ? Math.max(0, speed*3.6) : 0;
       await set(ref(rtdb, `/buses/${bus}`), { lat, lng, acc, speedKmH, ts: now });
       log(`Enviando (${bus}) lat:${lat.toFixed(5)} lng:${lng.toFixed(5)} vel:${speedKmH.toFixed(1)} km/h`);
-    }, err => log("ERROR GPS: "+err.message), { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
+    }, err=>log("ERROR GPS: "+err.message), { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
     btnStart.disabled=true; btnStop.disabled=false;
   };
-
   btnStop.onclick = ()=>{
     if(watchId!=null) navigator.geolocation.clearWatch(watchId);
-    if(wake) try{ wake.release(); }catch{}
-    watchId=null; log("Detenido.");
-    btnStart.disabled=false; btnStop.disabled=true;
+    if(wake) try{ wake.release(); }catch{}; watchId=null;
+    btnStart.disabled=false; btnStop.disabled=true; log("Detenido.");
   };
 </script>
+</body>
 </html>

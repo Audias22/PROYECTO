@@ -1,19 +1,22 @@
 <!doctype html>
 <html lang="es">
+<head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>UniBus — Mapa en vivo</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  body{margin:0;font-family:system-ui}
+  body{margin:0;background:#0b1220;font-family:system-ui}
   #map{height:100vh;width:100vw}
-  .legend{position:absolute;top:10px;left:10px;background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999}
+  .legend{position:absolute;top:10px;left:10px;background:#111a2e;color:#e6eefc;
+    padding:8px 10px;border-radius:10px;border:1px solid #1e2a44;z-index:999;font-size:14px}
 </style>
-
+</head>
+<body>
 <div class="legend">
   <b>UniBus Zacapa</b><br>
-  <span style="color:#2563eb">●</span> Bus A (Cabañas) &nbsp; 
-  <span style="color:#16a34a">●</span> Bus B (Huite)
+  <span style="color:#4f7cff">●</span> Bus A (Cabañas) &nbsp;
+  <span style="color:#22c55e">●</span> Bus B (Huite)
 </div>
 <div id="map"></div>
 
@@ -24,21 +27,20 @@
   const { rtdb } = window.__firebase;
 
   const zacapa = [14.972, -89.53];
-  const map = L.map('map').setView(zacapa, 11);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(map);
+  const map = L.map('map',{zoomControl:true}).setView(zacapa, 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(map);
 
-  const markers = {
-    A: L.circleMarker(zacapa, {radius:8, color:'#2563eb'}).addTo(map).bindPopup('Bus A'),
-    B: L.circleMarker(zacapa, {radius:8, color:'#16a34a'}).addTo(map).bindPopup('Bus B')
-  };
+  const mA = L.circleMarker(zacapa,{radius:8,color:'#4f7cff'}).addTo(map).bindPopup('Bus A');
+  const mB = L.circleMarker(zacapa,{radius:8,color:'#22c55e'}).addTo(map).bindPopup('Bus B');
 
-  function update(bus, val){
+  function upd(marker, val, bus){
     if(!val) return;
-    markers[bus].setLatLng([val.lat, val.lng])
+    marker.setLatLng([val.lat,val.lng])
       .setPopupContent(`Bus ${bus}<br>vel: ${(val.speedKmH||0).toFixed?.(1)||0} km/h<br>${new Date(val.ts).toLocaleTimeString()}`);
   }
-
-  onValue(ref(rtdb, '/buses/A'), snap => update('A', snap.val()));
-  onValue(ref(rtdb, '/buses/B'), snap => update('B', snap.val()));
+  onValue(ref(rtdb,'/buses/A'), s => upd(mA, s.val(), 'A'));
+  onValue(ref(rtdb,'/buses/B'), s => upd(mB, s.val(), 'B'));
 </script>
+</body>
 </html>
