@@ -1,290 +1,692 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>UniBus Zacapa — Operación</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniBus Zacapa — Registro</title>
 <style>
-  :root{
-    --bg:#0b1220; --card:#111a2e; --muted:#8aa0c3; --text:#e6eefc;
-    --primary:#4f7cff; --accent:#22c55e; --danger:#ef4444; --line:#1e2a44;
-  }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
-  .container{max-width:1100px;margin:24px auto;padding:0 16px}
-  header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-  .badge{background:#12224a;border:1px solid #243b6b;color:#9db6e9;padding:4px 10px;border-radius:999px;font-weight:600}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:16px 0}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:820px){ .row{grid-template-columns:1fr} }
-  label{display:block;font-size:13px;color:var(--muted);margin:4px 0}
-  input,select,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0e162a;color:var(--text);outline:none}
-  input:focus,select:focus{border-color:#2d4b8a}
-  .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#0f1a31;color:var(--text);cursor:pointer}
-  .btn-primary{background:var(--primary);border-color:#3254bf}
-  .btn-ghost{background:transparent}
-  .btn-danger{background:#371a1a;border-color:#3d2626;color:#ffb4b4}
-  .muted{color:var(--muted)}
-  .pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#14203f;border:1px solid #20325e;color:#a6b9e8;font-size:12px}
-  table{width:100%;border-collapse:collapse}
-  th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left}
-  th{color:#9fb4da;font-size:13px}
-  .pay{display:flex;gap:6px;align-items:center}
-  .pay input{width:auto}
-  .totals{display:flex;gap:16px;flex-wrap:wrap;margin:.3rem 0 0}
-  .totals b{color:#fff}
-  .tag{font-weight:700;color:#ccd9fb}
+  :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --fg:#e5e7eb; --line:#374151; --accent:#2563eb; --danger:#ef4444; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:var(--bg);color:var(--fg)}
+  header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 16px;z-index:5}
+  header h1{margin:0;font-size:22px}
+  main{max-width:1100px;margin:20px auto;padding:0 16px;display:grid;gap:16px;grid-template-columns:1fr;}
+  .grid{display:grid;gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0b1220;color:var(--fg)}
+  textarea{min-height:70px;resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-secondary{background:#1f2937;color:var(--fg);border:1px solid var(--line)}
+  .btn-danger{background:#1f2937;color:#fecaca;border:1px solid #7f1d1d}
+  .muted{color:var(--muted);font-size:12px}
+  .section-title{margin:0 0 8px 0}
+  .grid-2{display:grid;gap:12px}
+  @media(min-width:880px){ main{grid-template-columns:520px 1fr} .grid-2{grid-template-columns:1fr 1fr} }
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border-top:1px solid var(--line);padding:10px;vertical-align:top}
+  th{color:var(--muted);font-weight:600;text-align:left}
+  .badge{border:1px solid var(--line);background:#0b1220;border-radius:999px;padding:4px 8px;font-size:12px}
+  .right{margin-left:auto}
+  .pill{border:1px solid var(--line);background:#0b1220;border-radius:6px;padding:4px 8px;font-size:12px}
+  .nowrap{white-space:nowrap}
+  .empty{padding:20px;text-align:center;color:var(--muted)}
+  dialog{border:1px solid var(--line);border-radius:12px;padding:0;background:var(--card);color:var(--fg)}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .modal-h{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700}
+  .modal-b{padding:14px}
+  .modal-f{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid #374151;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:1000}
 </style>
 </head>
 <body>
-<div class="container">
-
-  <header>
-    <h1 style="margin:0">UniBus Zacapa</h1>
+<header>
+  <div class="row">
+    <h1>UniBus Zacapa</h1>
     <span class="badge">MVP</span>
-    <span class="pill" id="jornadaPill">Sábado: —</span>
-  </header>
-  <p class="muted" style="margin-top:-4px">Registrar <b class="tag">reservas</b> del <b>sábado vigente</b> y <b class="tag">marcar pagos</b> (Q20/Q40). Todo se guarda en Firebase.</p>
+    <span id="chipSabado" class="badge">Sábado: —</span>
+    <span class="right muted">Capacidad por bus: <b id="capacidadLbl">45</b> asientos</span>
+  </div>
+</header>
 
-  <!-- ACCESO -->
-  <section class="card" id="authCard">
-    <h3 style="margin:0 0 10px">Acceso</h3>
-    <div class="row">
-      <div><label>Email</label><input id="email" type="email" placeholder="admin@ejemplo.com"></div>
-      <div><label>Contraseña</label><input id="pass" type="password" placeholder="******"></div>
-    </div>
-    <div class="actions" style="margin-top:10px">
-      <button class="btn btn-primary" id="btnLogin">Iniciar sesión</button>
-      <button class="btn btn-ghost" id="btnLogout" style="display:none">Cerrar sesión</button>
-      <span id="who" class="muted"></span>
+<main>
+  <!-- ===== Acceso ===== -->
+  <section class="card">
+    <h2 class="section-title">Acceso</h2>
+    <div class="grid">
+      <div class="grid-2">
+        <div>
+          <label>Email</label>
+          <input id="email" placeholder="admin@tudominio.com">
+        </div>
+        <div>
+          <label>Contraseña</label>
+          <input id="password" type="password" placeholder="********">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="btnLogin">Iniciar sesión</button>
+        <button class="btn btn-secondary" id="btnLogout">Cerrar sesión</button>
+        <span id="estadoSesion" class="muted right">Sin sesión</span>
+      </div>
     </div>
   </section>
 
-  <!-- NUEVA RESERVA -->
-  <section class="card" id="formCard" style="display:none">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
-      <h3 style="margin:0">Nueva reserva</h3>
-      <div class="actions">
-        <button class="btn" id="btnHoy">Sábado vigente</button>
+  <div id="bloquePrivado" style="display:none">
+    <!-- ===== Formulario ===== -->
+    <section class="card">
+      <h2 class="section-title">Registrar pasajero</h2>
+      <div class="grid">
+        <div class="grid-2">
+          <div>
+            <label>Nombre y apellido</label>
+            <input id="nombre" placeholder="Ej. Ana López" maxlength="80">
+          </div>
+          <div>
+            <label>Teléfono (opcional)</label>
+            <input id="telefono" placeholder="+502 5xx xxx xx" maxlength="20">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Universidad</label>
+            <select id="universidad">
+              <option value="">— Seleccionar —</option>
+              <option>UMG Zacapa</option>
+              <option>USAC Zacapa</option>
+              <option>UPANA Zacapa</option>
+              <option>UNIS Zacapa</option>
+              <option>UVG Zacapa</option>
+              <option value="_otra">Otra…</option>
+            </select>
+            <input id="universidadOtra" placeholder="Escribe el nombre" style="display:none;margin-top:8px">
+          </div>
+          <div>
+            <label>Fecha del viaje</label>
+            <input type="date" id="fecha">
+            <div class="muted">* Solo se puede registrar para el sábado más próximo (se actualiza solo).</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Ruta / Bus (IDA 5:30 am)</label>
+            <select id="ruta">
+              <option value="">— Seleccionar —</option>
+              <option value="A">Bus A — San Vicente → Cabañas → Zacapa</option>
+              <option value="B">Bus B — San Vicente → Huite → Zacapa</option>
+            </select>
+          </div>
+          <div>
+            <label>Parada</label>
+            <select id="parada">
+              <option value="">— Seleccionar ruta primero —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Tipo de viaje / horario</label>
+            <select id="tipoViaje">
+              <option value="">— Seleccionar —</option>
+              <option value="ida_vuelta_1600">Ida y vuelta 4:00 pm</option>
+              <option value="ida_vuelta_1730">Ida y vuelta 5:30 pm</option>
+              <option value="solo_ida">Solo ida</option>
+              <option value="solo_vuelta">Solo vuelta</option>
+            </select>
+            <select id="horaVuelta" style="display:none; margin-top:8px">
+              <option value="">— Hora de vuelta —</option>
+              <option value="1600">4:00 pm</option>
+              <option value="1730">5:30 pm</option>
+            </select>
+          </div>
+          <div class="row" style="align-items:flex-end;justify-content:space-between">
+            <div>
+              <div class="muted">Disponibles para este viaje:</div>
+              <div><b id="disponibles">—</b> asientos</div>
+              <div class="muted" style="margin-top:6px">Costo: <b id="costoLbl">—</b></div>
+            </div>
+            <button class="btn btn-primary" id="btnGuardar">Guardar</button>
+          </div>
+        </div>
+
+        <div>
+          <label>Comentario (opcional)</label>
+          <textarea id="comentario" placeholder="Notas: pago, referencia, lugar específico…"></textarea>
+        </div>
+        <div class="row">
+          <span class="muted">Evita duplicados: mismo pasajero no puede registrarse dos veces para la misma fecha + ruta/tipo.</span>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="row" style="margin-top:6px">
-      <div><label>Nombre</label><input id="nombre" autocomplete="off"></div>
-      <div><label>Teléfono</label><input id="telefono" autocomplete="off"></div>
-    </div>
+    <!-- ===== Panel lateral: filtros / exportación ===== -->
+    <aside class="card">
+      <h2 class="section-title">Filtros & Acciones</h2>
+      <div class="grid">
+        <div class="grid-2">
+          <div>
+            <label>Fecha</label>
+            <input type="date" id="f_fecha" placeholder="Opcional" title="Solo sábados (se ajusta automáticamente)">
+            <div class="muted">* En filtros solo se consideran sábados. Usa el botón para ir al sábado vigente.</div>
+          </div>
+          <div>
+            <label>Ruta</label>
+            <select id="f_ruta">
+              <option value="">Todas</option>
+              <option value="A">Bus A</option>
+              <option value="B">Bus B</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label>Tipo de viaje</label>
+            <select id="f_tipo">
+              <option value="">Todos</option>
+              <option value="ida_vuelta_1600">Ida y vuelta 4:00 pm</option>
+              <option value="ida_vuelta_1730">Ida y vuelta 5:30 pm</option>
+              <option value="solo_ida">Solo ida</option>
+              <option value="solo_vuelta">Solo vuelta</option>
+            </select>
+            <select id="f_horaVuelta" style="display:none; margin-top:8px">
+              <option value="">— Hora de vuelta —</option>
+              <option value="1600">4:00 pm</option>
+              <option value="1730">5:30 pm</option>
+            </select>
+          </div>
+          <div>
+            <label>Buscar</label>
+            <input id="f_buscar" placeholder="Nombre / Univ / Parada…">
+          </div>
+        </div>
 
-    <div class="row">
-      <div><label>Universidad</label><input id="universidad" autocomplete="off"></div>
-      <div>
-        <label>Bus (ruta)</label>
-        <select id="bus">
-          <option value="A">A — San Vicente → Cabañas → Zacapa</option>
-          <option value="B">B — San Vicente → Huite → Zacapa</option>
-        </select>
+        <div class="row">
+          <button class="btn btn-secondary" id="btnExportCSV">Exportar CSV</button>
+          <button class="btn btn-secondary" id="btnWhats">WhatsApp (lista)</button>
+          <button class="btn btn-secondary" id="btnFiltroSabado">Sábado vigente</button>
+          <button class="btn btn-secondary" id="btnResetFiltros">Reset filtros</button>
+          <span class="right muted">Total registros: <b id="totales">0</b></span>
+        </div>
       </div>
-    </div>
+    </aside>
 
-    <div class="row">
+    <!-- ===== Tabla ===== -->
+    <section class="card" style="grid-column:1 / -1">
+      <h2 class="section-title">Lista de pasajeros</h2>
+      <div id="contenedorTabla"></div>
+    </section>
+  </div>
+</main>
+
+<!-- ===== Modal edición ===== -->
+<dialog id="dlg">
+  <div class="modal-h">Editar registro</div>
+  <div class="modal-b grid">
+    <div class="grid-2">
+      <div><label>Nombre</label><input id="e_nombre"></div>
+      <div><label>Teléfono</label><input id="e_telefono"></div>
+    </div>
+    <div class="grid-2">
+      <div><label>Universidad</label><input id="e_universidad"></div>
+      <div><label>Parada</label><input id="e_parada"></div>
+    </div>
+    <div class="grid-2">
+      <div><label>Fecha</label><input type="date" id="e_fecha"></div>
       <div>
         <label>Tipo de viaje</label>
-        <select id="tipo">
-          <option value="IDA_VUELTA_16">Ida y vuelta 4:00 pm</option>
-          <option value="IDA_VUELTA_17_30">Ida y vuelta 5:30 pm</option>
-          <option value="SOLO_IDA">Solo ida</option>
-          <option value="SOLO_VUELTA_16">Solo vuelta 4:00 pm</option>
-          <option value="SOLO_VUELTA_17_30">Solo vuelta 5:30 pm</option>
+        <select id="e_tipo">
+          <option value="ida_vuelta_1600">Ida y vuelta 4:00 pm</option>
+          <option value="ida_vuelta_1730">Ida y vuelta 5:30 pm</option>
+          <option value="solo_ida">Solo ida</option>
+          <option value="solo_vuelta">Solo vuelta</option>
         </select>
-      </div>
-      <div>
-        <label>Parada</label>
-        <input id="parada" placeholder="San Vicente / Cabañas / Huite / Univ.">
-      </div>
-    </div>
-
-    <div class="actions" style="margin-top:10px">
-      <button class="btn btn-primary" id="btnGuardar">Guardar reserva</button>
-      <span id="precioLabel" class="muted">Precio sugerido: Q40.00</span>
-    </div>
-  </section>
-
-  <!-- LISTA -->
-  <section class="card" id="listCard" style="display:none">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
-      <h3 style="margin:0">Lista de pasajeros</h3>
-      <div class="row" style="grid-template-columns:1fr 1fr;gap:8px;max-width:520px">
-        <input id="filtroTxt" placeholder="Filtrar por nombre/universidad…">
-        <select id="filtroBus">
-          <option value="">Todos los buses</option>
-          <option value="A">Bus A</option>
-          <option value="B">Bus B</option>
+        <select id="e_horaVuelta" style="display:none; margin-top:8px">
+          <option value="1600">4:00 pm</option>
+          <option value="1730">5:30 pm</option>
         </select>
       </div>
     </div>
-
-    <div class="totals muted">
-      <span>Registros: <b id="tRegs">0</b></span>
-      <span>Recaudado: <b id="tRec">Q0.00</b></span>
-      <span>Pendiente: <b id="tPen">Q0.00</b></span>
+    <div class="grid-2">
+      <div><label>Ruta</label>
+        <select id="e_ruta">
+          <option value="A">Bus A — San Vicente → Cabañas → Zacapa</option>
+          <option value="B">Bus B — San Vicente → Huite → Zacapa</option>
+        </select>
+      </div>
+      <div><label>Comentario</label><input id="e_comentario"></div>
     </div>
+  </div>
+  <div class="modal-f">
+    <button class="btn btn-secondary" id="e_cancelar">Cancelar</button>
+    <button class="btn btn-primary" id="e_guardar">Guardar cambios</button>
+  </div>
+</dialog>
 
-    <div style="overflow:auto;margin-top:8px">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th><th>Nombre</th><th>Univ.</th><th>Bus</th><th>Tipo</th><th>Precio</th><th>Teléfono</th><th>Pagó</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </section>
+<div id="toast" class="toast" style="display:none"></div>
 
-</div>
-
-<!-- Firebase común -->
-<script type="module" src="./firebase-init.js"></script>
-
-<!-- Página -->
 <script type="module">
-  import { signInWithEmailAndPassword, signOut, onAuthStateChanged }
-    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-  import {
-    collection, addDoc, serverTimestamp, onSnapshot,
-    query, where, orderBy, doc, updateDoc
-  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+/* =========================
+   0) Firebase SDK (v10.12.4)
+   ========================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-  const { auth, db } = window.__firebase;
+/* >>>>> Pega tu config real aquí (de la consola Firebase) <<<<< */
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROYECTO.firebaseapp.com",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_PROYECT_ID.appspot.com",
+  messagingSenderId: "XXXXXXX",
+  appId: "1:XXXX:web:YYYY"
+};
 
-  // ===== Helpers de fecha y precio =====
-  const ymd = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
-  function sabadoVigente(base=new Date()){
-    const d = new Date(base); d.setHours(0,0,0,0);
-    const w = d.getDay();               // 0..6
-    const diff = w===6 ? 0 : (6 - w + 7) % 7;
-    d.setDate(d.getDate() + diff);      // hoy si es sábado, o el próximo
-    return d;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+/* ======= UI Helpers ======= */
+const $ = s => document.querySelector(s);
+const toastEl = $('#toast');
+function toast(msg){ toastEl.textContent = msg; toastEl.style.display = 'block'; setTimeout(()=>toastEl.style.display='none', 2500); }
+function esc(s){ return (s??'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
+
+/* ======= Constantes negocio ======= */
+const CAPACIDAD_POR_BUS = 45;
+const RUTAS = {
+  A: { nombre: 'Bus A — San Vicente → Cabañas → Zacapa',
+       paradas: ['San Vicente (Parque)','Cabañas (Parque)','Zacapa (Centro)'] },
+  B: { nombre: 'Bus B — San Vicente → Huite → Zacapa',
+       paradas: ['San Vicente (Parque)','Huite (Parque)','Zacapa (Centro)'] }
+};
+const TIPO_LABEL = {
+  'ida_vuelta_1600':'Ida y vuelta 4:00 pm',
+  'ida_vuelta_1730':'Ida y vuelta 5:30 pm',
+  'solo_ida':'Solo ida',
+  'solo_vuelta':'Solo vuelta'
+};
+const PRECIO = { ida_vuelta_1600:40, ida_vuelta_1730:40, solo_ida:20, solo_vuelta:20 };
+
+/* ======= Fecha utilidades ======= */
+function toISODate(d){ return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function parseLocalISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y, m-1, d); }
+function sabadoVigenteISO() {
+  const now = new Date();
+  const delta = (6 - now.getDay() + 7) % 7; // 0 si hoy es sábado
+  const t = new Date(now); t.setHours(0,0,0,0); t.setDate(t.getDate()+delta);
+  return toISODate(t);
+}
+function snapToNextSaturday(iso){
+  const d = parseLocalISO(iso);
+  const delta = (6 - d.getDay() + 7) % 7;
+  d.setDate(d.getDate()+delta);
+  return toISODate(d);
+}
+
+/* ======= Estado global ======= */
+const capacidadLbl = $('#capacidadLbl'); capacidadLbl.textContent = CAPACIDAD_POR_BUS;
+$('#chipSabado').textContent = 'Sábado: ' + sabadoVigenteISO();
+
+let registros = [];           // se llena desde Firestore en tiempo real
+let unsubReservas = null;     // para cortar listener al salir
+
+/* ======= Form dinámico ======= */
+const rutaSel = $('#ruta'), paradaSel = $('#parada'), tipoSel = $('#tipoViaje'), horaVSel = $('#horaVuelta');
+function pintarParadas(){
+  const r = rutaSel.value;
+  paradaSel.innerHTML = '';
+  if(!r){ paradaSel.innerHTML = '<option value="">— Seleccionar ruta primero —</option>'; return; }
+  for(const p of RUTAS[r].paradas){
+    const o = document.createElement('option'); o.textContent = p; o.value = p;
+    paradaSel.appendChild(o);
   }
-  let JORNADA = ymd(sabadoVigente());
-  const precioPorTipo = t => (t.startsWith("IDA_VUELTA") ? 40 : 20);
+}
+rutaSel.addEventListener('change', ()=>{ pintarParadas(); calcularDisponibles(); });
+tipoSel.addEventListener('change', ()=>{
+  horaVSel.style.display = (tipoSel.value==='solo_vuelta') ? 'block' : 'none';
+  calcularDisponibles(); pintarCosto();
+});
+horaVSel.addEventListener('change', calcularDisponibles);
+$('#fecha').addEventListener('change', calcularDisponibles);
+$('#universidad').addEventListener('change', ()=>{
+  $('#universidadOtra').style.display = ($('#universidad').value === '_otra') ? 'block' : 'none';
+});
 
-  const pill = document.getElementById('jornadaPill');
-  const setPill = ()=> pill.textContent = 'Sábado: ' + JORNADA;
-  setPill();
+/* ======= Reglas de capacidad / costo ======= */
+function claveCap(x){
+  return (x.tipo==='solo_vuelta')
+    ? `${x.fecha}|REGRESO|${x.tipo}|${x.horaVuelta||''}`
+    : `${x.fecha}|${x.ruta}|${x.tipo}`;
+}
+function calcularDisponibles(){
+  const f = $('#fecha').value, r = $('#ruta').value, t = $('#tipoViaje').value, hv = $('#horaVuelta').value;
+  if(!f||!t){ $('#disponibles').textContent = '—'; return; }
+  let key;
+  if(t==='solo_vuelta'){
+    if(!hv){ $('#disponibles').textContent = '—'; return; }
+    key = `${f}|REGRESO|${t}|${hv}`;
+  } else {
+    if(!r){ $('#disponibles').textContent = '—'; return; }
+    key = `${f}|${r}|${t}`;
+  }
+  const usados = registros.filter(x => claveCap(x) === key).length;
+  $('#disponibles').textContent = Math.max(0, CAPACIDAD_POR_BUS - usados);
+}
+function pintarCosto(){
+  const t = $('#tipoViaje').value;
+  $('#costoLbl').textContent = t ? `Q${PRECIO[t].toFixed(2)}` : '—';
+}
+pintarCosto();
 
-  // ===== UI refs =====
-  const authCard = document.getElementById('authCard');
-  const formCard = document.getElementById('formCard');
-  const listCard = document.getElementById('listCard');
-  const email = document.getElementById('email');
-  const pass  = document.getElementById('pass');
-  const who   = document.getElementById('who');
-  const btnLogin  = document.getElementById('btnLogin');
-  const btnLogout = document.getElementById('btnLogout');
-  const btnHoy    = document.getElementById('btnHoy');
-  const tipoSel   = document.getElementById('tipo');
-  const precioLabel = document.getElementById('precioLabel');
+/* ======= Bloqueo fecha al sábado vigente ======= */
+function lockFechaFormularioAlSabado(){
+  const sab = sabadoVigenteISO();
+  const f = $('#fecha'); f.min = sab; f.max = sab; f.value = sab;
+}
+lockFechaFormularioAlSabado();
 
-  const syncPrecio = () => precioLabel.textContent = "Precio sugerido: Q" + precioPorTipo(tipoSel.value) + ".00";
-  tipoSel.addEventListener("change", syncPrecio); syncPrecio();
-
-  // ===== Auth =====
-  btnLogin.onclick  = async ()=> { await signInWithEmailAndPassword(auth, email.value, pass.value); };
-  btnLogout.onclick = ()=> signOut(auth);
-
-  onAuthStateChanged(auth, (u)=>{
-    const logged = !!u;
-    authCard.style.opacity  = logged ? 0.6 : 1;
-    btnLogin.style.display  = logged ? "none" : "inline-block";
-    btnLogout.style.display = logged ? "inline-block" : "none";
-    who.textContent = logged ? ("Conectado: " + (u.email || u.uid)) : "Sin sesión";
-    formCard.style.display = logged ? "block" : "none";
-    listCard.style.display = logged ? "block" : "none";
+/* ======= Render tabla ======= */
+const contTabla = $('#contenedorTabla');
+function tipoTexto(r){
+  if(r.tipo==='solo_vuelta') return `Solo vuelta ${r.horaVuelta==='1600'?'4:00 pm':'5:30 pm'}`;
+  return TIPO_LABEL[r.tipo]||r.tipo;
+}
+function byFilters(rs){
+  const fFecha = $('#f_fecha').value;
+  const fRuta = $('#f_ruta').value;
+  const fTipo = $('#f_tipo').value;
+  const fHoraV = $('#f_horaVuelta').value;
+  const q = ($('#f_buscar').value||'').trim().toLowerCase();
+  return rs
+    .filter(x => !fFecha || x.fecha===fFecha)
+    .filter(x => !fRuta || x.ruta===fRuta || x.tipo==='solo_vuelta')
+    .filter(x => !fTipo || x.tipo===fTipo)
+    .filter(x => !(fTipo==='solo_vuelta' && fHoraV) || x.horaVuelta===fHoraV)
+    .filter(x => !q || (x.nombre+x.universidad+(x.parada||'')).toLowerCase().includes(q));
+}
+function render(){
+  const rows = byFilters(registros).sort((a,b)=> (a.creadoEn?.seconds||0)-(b.creadoEn?.seconds||0));
+  $('#totales').textContent = rows.length;
+  if(rows.length===0){ contTabla.innerHTML = `<div class="empty">Sin registros para los filtros actuales.</div>`; return; }
+  const totalQ = rows.reduce((acc,r)=> acc + (r.precio||0), 0);
+  let html = `<div class="row"><span class="muted">Recaudado (filtros):</span><b>Q${totalQ.toFixed(2)}</b></div>`;
+  html += `<table><thead><tr>
+    <th>#</th><th>Nombre</th><th class="nowrap">Univ.</th><th>Ruta</th><th>Parada</th>
+    <th>Tipo</th><th>Fecha</th><th>Precio</th><th>Teléfono</th><th>Comentario</th><th>Acciones</th>
+  </tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    html += `<tr>
+      <td>${i+1}</td>
+      <td>${esc(r.nombre)}</td>
+      <td>${esc(r.universidad)}</td>
+      <td>${r.ruta ? `<span class="pill">${r.ruta} · ${esc(RUTAS[r.ruta]?.nombre||'')}</span>` : '-'}</td>
+      <td>${esc(r.parada||'-')}</td>
+      <td>${esc(tipoTexto(r))}</td>
+      <td class="nowrap">${r.fecha}</td>
+      <td>Q${(r.precio||0).toFixed(2)}</td>
+      <td>${esc(r.telefono||'')}</td>
+      <td>${esc(r.comentario||'')}</td>
+      <td class="nowrap">
+        <button class="btn btn-secondary" data-act="edit" data-id="${r._id}">Editar</button>
+        <button class="btn btn-danger" data-act="del" data-id="${r._id}">Eliminar</button>
+      </td>
+    </tr>`;
   });
+  html += `</tbody></table>`;
+  contTabla.innerHTML = html;
+  calcularDisponibles();
+}
 
-  // ===== Jornada: botón “Sábado vigente” =====
-  btnHoy.onclick = ()=>{
-    JORNADA = ymd(sabadoVigente());
-    setPill();
-    attachSnapshot(); // re-suscribe la lista
-  };
-
-  // ===== Guardar reserva =====
-  document.getElementById('btnGuardar').onclick = async ()=>{
-    const data = {
-      jornadaId: JORNADA,
-      nombre: document.getElementById('nombre').value.trim(),
-      telefono: document.getElementById('telefono').value.trim(),
-      universidad: document.getElementById('universidad').value.trim(),
-      bus: document.getElementById('bus').value,
-      tipo: document.getElementById('tipo').value,
-      parada: document.getElementById('parada').value.trim(),
-      precio: precioPorTipo(document.getElementById('tipo').value),
-      pago: false,
-      creadoEn: serverTimestamp()
-    };
-    if(!data.nombre){ alert("Nombre es obligatorio"); return; }
-    await addDoc(collection(db, 'reservas'), data);
-    ['nombre','telefono','universidad','parada'].forEach(id=>document.getElementById(id).value='');
-  };
-
-  // ===== Listado en vivo + filtros =====
-  const tbody = document.getElementById('tbody');
-  const filtroTxt = document.getElementById('filtroTxt');
-  const filtroBus = document.getElementById('filtroBus');
-
-  let unsub = null;
-  function attachSnapshot(){
-    if(unsub) unsub();
-    const qBase = query(
-      collection(db,'reservas'),
-      where('jornadaId','==', JORNADA),
-      orderBy('creadoEn','asc')
-    );
-    unsub = onSnapshot(qBase, (snap)=> render(snap.docs.map(d => ({id:d.id, ...d.data()}))));
-  }
-  attachSnapshot();
-
-  function render(rows){
-    const txt = (filtroTxt.value||'').toLowerCase();
-    const bus = filtroBus.value||'';
-    const filtered = rows.filter(r=>{
-      const okTxt = !txt || (r.nombre?.toLowerCase().includes(txt) || r.universidad?.toLowerCase().includes(txt));
-      const okBus = !bus || r.bus===bus;
-      return okTxt && okBus;
-    });
-
-    tbody.innerHTML = "";
-    let i=0, rec=0, pen=0;
-    for(const r of filtered){
-      i++;
-      if(r.pago) rec += Number(r.precio||0); else pen += Number(r.precio||0);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${i}</td>
-        <td>${r.nombre||""}</td>
-        <td>${r.universidad||""}</td>
-        <td>${r.bus}</td>
-        <td>${(r.tipo||"").replaceAll("_"," ").toLowerCase()}</td>
-        <td>Q${r.precio||0}.00</td>
-        <td>${r.telefono||""}</td>
-        <td class="pay"><input type="checkbox" ${r.pago?"checked":""}><span class="muted">${r.pago?"Pagado":"Pendiente"}</span></td>
-      `;
-      const chk = tr.querySelector('input[type=checkbox]');
-      const label = tr.querySelector('.pay span');
-      chk.addEventListener('change', async ()=>{
-        await updateDoc(doc(db,'reservas', r.id), { pago: chk.checked });
-        label.textContent = chk.checked ? "Pagado" : "Pendiente";
-      });
-      tbody.appendChild(tr);
+/* ======= Listener de tabla (editar/eliminar) ======= */
+contTabla.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  const id = btn.dataset.id; const act = btn.dataset.act;
+  if(act==='del'){
+    if(confirm('¿Eliminar este registro?')){
+      await deleteDoc(doc(collection(db,'reservas'), id));
+      toast('Eliminado.');
     }
-    document.getElementById('tRegs').textContent = String(i);
-    document.getElementById('tRec').textContent = "Q"+rec+".00";
-    document.getElementById('tPen').textContent = "Q"+pen+".00";
+  } else if(act==='edit'){
+    abrirEditar(id);
   }
+});
 
-  filtroTxt.addEventListener('input', ()=>attachSnapshot());
-  filtroBus.addEventListener('change', ()=>attachSnapshot());
+/* ======= Filtros ======= */
+const fTipo = $('#f_tipo'), fHoraV = $('#f_horaVuelta'), fFecha = $('#f_fecha');
+fTipo.addEventListener('input', ()=>{
+  fHoraV.style.display = (fTipo.value==='solo_vuelta') ? 'block' : 'none';
+  if(fTipo.value!=='solo_vuelta'){ fHoraV.value=''; }
+  render();
+});
+fHoraV.addEventListener('input', render);
+for(const id of ['f_ruta','f_buscar']) $('#'+id).addEventListener('input', render);
+function ensureSaturdayFilter(){
+  const v = fFecha.value;
+  if(!v) { render(); return; }
+  const dt = parseLocalISO(v);
+  if (dt.getDay() !== 6) {
+    fFecha.value = snapToNextSaturday(v);
+  }
+  render();
+}
+fFecha.addEventListener('change', ensureSaturdayFilter);
+$('#btnFiltroSabado').addEventListener('click', ()=>{ $('#f_fecha').value = sabadoVigenteISO(); render(); });
+$('#btnResetFiltros').addEventListener('click', ()=>{ fFecha.value=''; $('#f_ruta').value=''; fTipo.value=''; fHoraV.value=''; fHoraV.style.display='none'; $('#f_buscar').value=''; render(); });
+
+/* ======= Export CSV & Whats ======= */
+function csv(v){ const s = (v??'').toString(); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s }
+$('#btnExportCSV').addEventListener('click', ()=>{
+  const rows = byFilters(registros);
+  if(rows.length===0) return toast('Sin datos para exportar.');
+  const head = ['#','Nombre','Universidad','Ruta','Parada','Tipo','Fecha','Precio','Telefono','Comentario'];
+  const lines = [head.join(',')];
+  rows.forEach((r,i)=>{
+    const rutaTxt = r.ruta ? `${r.ruta} ${RUTAS[r.ruta]?.nombre||''}` : '—';
+    const line = [
+      i+1, r.nombre, r.universidad, rutaTxt, r.parada||'',
+      tipoTexto(r), r.fecha, `Q${(r.precio||0).toFixed(2)}`, r.telefono||'', (r.comentario||'').replace(/[\r\n,]/g,' ')
+    ].map(csv).join(',');
+    lines.push(line);
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `bus_zacapa_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+});
+$('#btnWhats').addEventListener('click', ()=>{
+  const rows = byFilters(registros);
+  if(rows.length===0) return toast('No hay registros.');
+  const f = $('#f_fecha').value || sabadoVigenteISO();
+  const rSel = $('#f_ruta').value;
+  const r = rSel ? `${rSel} (${RUTAS[rSel]?.nombre||''})` : 'Todas';
+  let t = $('#f_tipo').value ? TIPO_LABEL[$('#f_tipo').value] : 'Todos';
+  if($('#f_tipo').value==='solo_vuelta' && $('#f_horaVuelta').value){
+    t = `Solo vuelta ${$('#f_horaVuelta').value==='1600'?'4:00 pm':'5:30 pm'}`;
+  }
+  const totalQ = rows.reduce((acc,x)=> acc + (x.precio||0), 0);
+  let txt = `*Lista Bus Universitario*%0AFecha: ${f}%0ARuta: ${encodeURIComponent(r)}%0ATipo: ${encodeURIComponent(t)}%0ATotal: Q${totalQ.toFixed(2)}%0A%0A`;
+  rows.forEach((x,i)=>{
+    const rutaTxt = x.ruta ? `${x.ruta}` : '—';
+    txt += `${i+1}. ${encodeURIComponent(x.nombre)} — ${encodeURIComponent(x.universidad)} — ${encodeURIComponent(rutaTxt)} — ${encodeURIComponent(tipoTexto(x))} — Q${(x.precio||0).toFixed(2)}%0A`;
+  });
+  const url = `https://wa.me/?text=${txt}`;
+  window.open(url, '_blank');
+});
+
+/* ======= Crear (Firestore) ======= */
+$('#btnGuardar').addEventListener('click', async ()=>{
+  const nombre = $('#nombre').value.trim();
+  const telefono = $('#telefono').value.trim();
+  const uniSel = $('#universidad').value;
+  const universidad = uniSel === '_otra' ? $('#universidadOtra').value.trim() : uniSel;
+  const fecha = $('#fecha').value;
+  const ruta = $('#ruta').value;
+  const parada = $('#parada').value;
+  const tipo = $('#tipoViaje').value;
+  const horaVuelta = (tipo==='solo_vuelta') ? $('#horaVuelta').value : '';
+  const comentario = $('#comentario').value.trim();
+
+  if(!nombre || !universidad || !fecha || !tipo){ toast('Completa nombre, universidad, fecha y tipo.'); return; }
+  if (fecha !== sabadoVigenteISO()) { toast('Solo se permite registrar para el sábado vigente.'); return; }
+  if(tipo==='solo_vuelta' && !horaVuelta){ toast('Selecciona la hora de vuelta.'); return; }
+  if(tipo!=='solo_vuelta' && (!ruta || !parada)){ toast('Selecciona ruta y parada.'); return; }
+
+  // Duplicado local (sobre snapshot actual)
+  const dup = registros.some(r =>
+    r.nombre.toLowerCase()===nombre.toLowerCase() &&
+    r.universidad.toLowerCase()===universidad.toLowerCase() &&
+    r.fecha===fecha &&
+    r.tipo===tipo &&
+    (tipo==='solo_vuelta' ? (r.horaVuelta===horaVuelta) : (r.ruta===ruta))
+  );
+  if(dup){ toast('Registro duplicado para ese viaje.'); return; }
+
+  // Capacidad
+  const key = (tipo==='solo_vuelta') ? `${fecha}|REGRESO|${tipo}|${horaVuelta}` : `${fecha}|${ruta}|${tipo}`;
+  const usados = registros.filter(x => claveCap(x) === key).length;
+  if(usados >= CAPACIDAD_POR_BUS){ toast('No hay asientos disponibles.'); return; }
+
+  const jornadaId = sabadoVigenteISO();
+  const precio = PRECIO[tipo];
+
+  try{
+    await addDoc(collection(db,'reservas'), {
+      nombre, telefono, universidad, fecha, ruta: ruta||'', parada: parada||'',
+      tipo, horaVuelta, comentario,
+      precio,
+      jornadaId,
+      creadoEn: serverTimestamp()
+    });
+    $('#nombre').value=''; $('#telefono').value=''; $('#comentario').value='';
+    toast('Guardado.');
+  }catch(e){
+    console.error(e); toast('No se pudo guardar.');
+  }
+});
+
+/* ======= Edición ======= */
+const dlg = $('#dlg'); let editId = null;
+function abrirEditar(id){
+  const r = registros.find(x=>x._id===id); if(!r) return;
+  editId = id;
+  const sab = sabadoVigenteISO();
+  const ef = $('#e_fecha'); ef.min = sab; ef.max = sab;
+
+  $('#e_nombre').value = r.nombre;
+  $('#e_telefono').value = r.telefono||'';
+  $('#e_universidad').value = r.universidad;
+  $('#e_parada').value = r.parada||'';
+  $('#e_fecha').value = r.fecha;
+  $('#e_tipo').value = r.tipo;
+  $('#e_horaVuelta').style.display = (r.tipo==='solo_vuelta') ? 'block' : 'none';
+  $('#e_horaVuelta').value = r.horaVuelta || '1600';
+  $('#e_ruta').value = r.ruta||'';
+  $('#e_comentario').value = r.comentario||'';
+  dlg.showModal();
+}
+$('#e_tipo').addEventListener('input', ()=>{ $('#e_horaVuelta').style.display = ($('#e_tipo').value==='solo_vuelta') ? 'block' : 'none'; });
+$('#e_cancelar').addEventListener('click', ()=> dlg.close());
+$('#e_guardar').addEventListener('click', async ()=>{
+  const nuevo = {
+    nombre: $('#e_nombre').value.trim(),
+    telefono: $('#e_telefono').value.trim(),
+    universidad: $('#e_universidad').value.trim(),
+    parada: $('#e_parada').value.trim(),
+    fecha: $('#e_fecha').value,
+    tipo: $('#e_tipo').value,
+    horaVuelta: ($('#e_tipo').value==='solo_vuelta') ? $('#e_horaVuelta').value : '',
+    ruta: $('#e_ruta').value,
+    comentario: $('#e_comentario').value.trim()
+  };
+  if(!nuevo.nombre||!nuevo.universidad||!nuevo.fecha||!nuevo.tipo){ toast('Completa los campos.'); return; }
+  if(nuevo.fecha !== sabadoVigenteISO()){ toast('Debe ser el sábado vigente.'); return; }
+  if(nuevo.tipo==='solo_vuelta' && !nuevo.horaVuelta){ toast('Selecciona la hora de la vuelta.'); return; }
+  if(nuevo.tipo!=='solo_vuelta' && (!nuevo.ruta || !nuevo.parada)){ toast('Selecciona ruta y parada.'); return; }
+
+  // Evitar duplicados (excluyendo el mismo doc)
+  const dup = registros.some(x => x._id!==editId &&
+    x.nombre.toLowerCase()===nuevo.nombre.toLowerCase() &&
+    x.universidad.toLowerCase()===nuevo.universidad.toLowerCase() &&
+    x.fecha===nuevo.fecha &&
+    x.tipo===nuevo.tipo &&
+    (nuevo.tipo==='solo_vuelta' ? (x.horaVuelta===nuevo.horaVuelta) : (x.ruta===nuevo.ruta)));
+  if(dup){ toast('Ya existe un registro igual.'); return; }
+
+  nuevo.precio = PRECIO[nuevo.tipo];
+  try{
+    await updateDoc(doc(collection(db,'reservas'), editId), nuevo);
+    dlg.close(); toast('Actualizado.');
+  }catch(e){ console.error(e); toast('No se pudo actualizar.'); }
+});
+
+/* ======= Login / Logout ======= */
+const btnLogin = $('#btnLogin'), btnLogout = $('#btnLogout');
+btnLogin.addEventListener('click', async ()=>{
+  if(auth.currentUser){ toast('Ya hay sesión.'); return; }
+  const email = ($('#email').value||'').trim();
+  const pass  = ($('#password').value||'').trim();
+  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Email inválido.'); return; }
+  if(!pass){ toast('Ingresa tu contraseña.'); return; }
+  btnLogin.disabled = true;
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    console.error(e);
+    const c = e?.code||'';
+    if(c==='auth/wrong-password') toast('Contraseña incorrecta.');
+    else if(c==='auth/user-not-found') toast('Usuario no existe.');
+    else toast('No se pudo iniciar sesión.');
+  }finally{ btnLogin.disabled = false; }
+});
+btnLogout.addEventListener('click', async ()=>{ try{ await signOut(auth); }catch{} });
+
+/* ======= Arranque/paro de listeners SOLO con sesión ======= */
+function startReservasListener(jornadaId){
+  if(typeof unsubReservas==='function'){ unsubReservas(); unsubReservas=null; }
+  const qy = query(
+    collection(db,'reservas'),
+    where('jornadaId','==', jornadaId),
+    orderBy('creadoEn','asc')
+  );
+  unsubReservas = onSnapshot(qy, (snap)=>{
+    registros = snap.docs.map(d => ({ _id:d.id, ...d.data() }));
+    render(); calcularDisponibles();
+  }, (err)=>{
+    console.error('[reservas]', err);
+    if((err?.code||'').includes('failed-precondition')) toast('Falta índice compuesto en Firestore.');
+    if((err?.code||'').includes('permission-denied')) toast('Sin permisos. Inicia sesión.');
+  });
+}
+
+onAuthStateChanged(auth, (user)=>{
+  const estado = $('#estadoSesion');
+  const privado = $('#bloquePrivado');
+  if(user){
+    estado.textContent = `Conectado: ${user.email ?? 'anónimo'}`;
+    privado.style.display = '';
+    startReservasListener(sabadoVigenteISO());
+  }else{
+    estado.textContent = 'Sin sesión';
+    privado.style.display = 'none';
+    if(typeof unsubReservas==='function'){ unsubReservas(); unsubReservas=null; }
+    registros = []; render();
+  }
+});
+
+/* ======= Filtro sábado vigente al cargar ======= */
+$('#f_fecha').value = sabadoVigenteISO();
+
+/* ======= Paradas y capacidad inicial ======= */
+(function init(){
+  pintarParadas();
+  calcularDisponibles();
+  pintarCosto();
+})();
 </script>
 </body>
 </html>
