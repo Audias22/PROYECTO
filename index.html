@@ -19,7 +19,7 @@
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
   .btn-primary{background:var(--accent);color:#fff}
-  .btn-secondary{background:#1f2937;color:var(--fg);border:1px solid var(--line)}
+  .btn-secondary{background:#1f2937;color:#fff;border:1px solid var(--line)}
   .btn-danger{background:#1f2937;color:#fecaca;border:1px solid #7f1d1d}
   .muted{color:var(--muted);font-size:12px}
   .section-title{margin:0 0 8px 0}
@@ -164,14 +164,14 @@
       </div>
     </section>
 
-    <!-- ===== Panel lateral: filtros / exportación ===== -->
+    <!-- ===== Panel lateral ===== -->
     <aside class="card">
       <h2 class="section-title">Filtros & Acciones</h2>
       <div class="grid">
         <div class="grid-2">
           <div>
             <label>Fecha</label>
-            <input type="date" id="f_fecha" placeholder="Opcional" title="Solo sábados (se ajusta automáticamente)">
+            <input type="date" id="f_fecha" title="Solo sábados (se ajusta automáticamente)">
             <div class="muted">* En filtros solo se consideran sábados. Usa el botón para ir al sábado vigente.</div>
           </div>
           <div>
@@ -271,31 +271,30 @@
 
 <script type="module">
 /* =========================
-   0) Firebase SDK (v10.12.4)
+   Firebase SDK (v10.12.4) por CDN
    ========================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-/* >>>>> Pega tu config real aquí (de la consola Firebase) <<<<< */
+/* ====== TU CONFIG REAL (integrada) ====== */
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_PROYECT_ID.appspot.com",
-  messagingSenderId: "XXXXXXX",
-  appId: "1:XXXX:web:YYYY"
+  apiKey: "AIzaSyDokAFIRVJRSkuusmS1qYZR_bZK0QMJXoQ",
+  authDomain: "unibus-zacapa-prod.firebaseapp.com",
+  projectId: "unibus-zacapa-prod",
+  storageBucket: "unibus-zacapa-prod.firebasestorage.app",
+  messagingSenderId: "406353089667",
+  appId: "1:406353089667:web:1f9cf1b2e4867f25f2f7b6"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-/* ======= UI Helpers ======= */
+/* ======= Helpers UI ======= */
 const $ = s => document.querySelector(s);
 const toastEl = $('#toast');
-function toast(msg){ toastEl.textContent = msg; toastEl.style.display = 'block'; setTimeout(()=>toastEl.style.display='none', 2500); }
-function esc(s){ return (s??'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
+function toast(msg){ toastEl.textContent = msg; toastEl.style.display = 'block'; setTimeout(()=>toastEl.style.display='none', 2600); }
+function esc(s){ return (s??'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
 
 /* ======= Constantes negocio ======= */
 const CAPACIDAD_POR_BUS = 45;
@@ -313,96 +312,51 @@ const TIPO_LABEL = {
 };
 const PRECIO = { ida_vuelta_1600:40, ida_vuelta_1730:40, solo_ida:20, solo_vuelta:20 };
 
-/* ======= Fecha utilidades ======= */
+/* ======= Fechas ======= */
 function toISODate(d){ return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function parseLocalISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y, m-1, d); }
-function sabadoVigenteISO() {
-  const now = new Date();
-  const delta = (6 - now.getDay() + 7) % 7; // 0 si hoy es sábado
-  const t = new Date(now); t.setHours(0,0,0,0); t.setDate(t.getDate()+delta);
-  return toISODate(t);
-}
-function snapToNextSaturday(iso){
-  const d = parseLocalISO(iso);
-  const delta = (6 - d.getDay() + 7) % 7;
-  d.setDate(d.getDate()+delta);
-  return toISODate(d);
-}
+function sabadoVigenteISO(){ const now=new Date(); const delta=(6-now.getDay()+7)%7; const t=new Date(now); t.setHours(0,0,0,0); t.setDate(t.getDate()+delta); return toISODate(t); }
+function snapToNextSaturday(iso){ const d=parseLocalISO(iso); const delta=(6-d.getDay()+7)%7; d.setDate(d.getDate()+delta); return toISODate(d); }
 
-/* ======= Estado global ======= */
-const capacidadLbl = $('#capacidadLbl'); capacidadLbl.textContent = CAPACIDAD_POR_BUS;
+/* ======= Estado/UI ======= */
+$('#capacidadLbl').textContent = CAPACIDAD_POR_BUS;
 $('#chipSabado').textContent = 'Sábado: ' + sabadoVigenteISO();
-
-let registros = [];           // se llena desde Firestore en tiempo real
-let unsubReservas = null;     // para cortar listener al salir
+let registros = [];
+let unsubReservas = null;
 
 /* ======= Form dinámico ======= */
-const rutaSel = $('#ruta'), paradaSel = $('#parada'), tipoSel = $('#tipoViaje'), horaVSel = $('#horaVuelta');
+const rutaSel=$('#ruta'), paradaSel=$('#parada'), tipoSel=$('#tipoViaje'), horaVSel=$('#horaVuelta');
 function pintarParadas(){
-  const r = rutaSel.value;
-  paradaSel.innerHTML = '';
-  if(!r){ paradaSel.innerHTML = '<option value="">— Seleccionar ruta primero —</option>'; return; }
-  for(const p of RUTAS[r].paradas){
-    const o = document.createElement('option'); o.textContent = p; o.value = p;
-    paradaSel.appendChild(o);
-  }
+  const r=rutaSel.value; paradaSel.innerHTML='';
+  if(!r){ paradaSel.innerHTML='<option value="">— Seleccionar ruta primero —</option>'; return; }
+  for(const p of RUTAS[r].paradas){ const o=document.createElement('option'); o.textContent=p; o.value=p; paradaSel.appendChild(o); }
 }
 rutaSel.addEventListener('change', ()=>{ pintarParadas(); calcularDisponibles(); });
-tipoSel.addEventListener('change', ()=>{
-  horaVSel.style.display = (tipoSel.value==='solo_vuelta') ? 'block' : 'none';
-  calcularDisponibles(); pintarCosto();
-});
+tipoSel.addEventListener('change', ()=>{ horaVSel.style.display=(tipoSel.value==='solo_vuelta')?'block':'none'; calcularDisponibles(); pintarCosto(); });
 horaVSel.addEventListener('change', calcularDisponibles);
 $('#fecha').addEventListener('change', calcularDisponibles);
-$('#universidad').addEventListener('change', ()=>{
-  $('#universidadOtra').style.display = ($('#universidad').value === '_otra') ? 'block' : 'none';
-});
+$('#universidad').addEventListener('change', ()=>{ $('#universidadOtra').style.display = ($('#universidad').value === '_otra') ? 'block' : 'none'; });
 
-/* ======= Reglas de capacidad / costo ======= */
-function claveCap(x){
-  return (x.tipo==='solo_vuelta')
-    ? `${x.fecha}|REGRESO|${x.tipo}|${x.horaVuelta||''}`
-    : `${x.fecha}|${x.ruta}|${x.tipo}`;
-}
+/* ======= Capacidad / costo ======= */
+function claveCap(x){ return (x.tipo==='solo_vuelta') ? `${x.fecha}|REGRESO|${x.tipo}|${x.horaVuelta||''}` : `${x.fecha}|${x.ruta}|${x.tipo}`; }
 function calcularDisponibles(){
-  const f = $('#fecha').value, r = $('#ruta').value, t = $('#tipoViaje').value, hv = $('#horaVuelta').value;
-  if(!f||!t){ $('#disponibles').textContent = '—'; return; }
+  const f=$('#fecha').value, r=$('#ruta').value, t=$('#tipoViaje').value, hv=$('#horaVuelta').value;
+  if(!f||!t){ $('#disponibles').textContent='—'; return; }
   let key;
-  if(t==='solo_vuelta'){
-    if(!hv){ $('#disponibles').textContent = '—'; return; }
-    key = `${f}|REGRESO|${t}|${hv}`;
-  } else {
-    if(!r){ $('#disponibles').textContent = '—'; return; }
-    key = `${f}|${r}|${t}`;
-  }
+  if(t==='solo_vuelta'){ if(!hv){ $('#disponibles').textContent='—'; return; } key=`${f}|REGRESO|${t}|${hv}`; }
+  else { if(!r){ $('#disponibles').textContent='—'; return; } key=`${f}|${r}|${t}`; }
   const usados = registros.filter(x => claveCap(x) === key).length;
   $('#disponibles').textContent = Math.max(0, CAPACIDAD_POR_BUS - usados);
 }
-function pintarCosto(){
-  const t = $('#tipoViaje').value;
-  $('#costoLbl').textContent = t ? `Q${PRECIO[t].toFixed(2)}` : '—';
-}
-pintarCosto();
-
-/* ======= Bloqueo fecha al sábado vigente ======= */
-function lockFechaFormularioAlSabado(){
-  const sab = sabadoVigenteISO();
-  const f = $('#fecha'); f.min = sab; f.max = sab; f.value = sab;
-}
+function pintarCosto(){ const t=$('#tipoViaje').value; $('#costoLbl').textContent = t ? `Q${PRECIO[t].toFixed(2)}` : '—'; }
+function lockFechaFormularioAlSabado(){ const sab=sabadoVigenteISO(); const f=$('#fecha'); f.min=sab; f.max=sab; f.value=sab; }
 lockFechaFormularioAlSabado();
 
 /* ======= Render tabla ======= */
-const contTabla = $('#contenedorTabla');
-function tipoTexto(r){
-  if(r.tipo==='solo_vuelta') return `Solo vuelta ${r.horaVuelta==='1600'?'4:00 pm':'5:30 pm'}`;
-  return TIPO_LABEL[r.tipo]||r.tipo;
-}
+const contTabla=$('#contenedorTabla');
+function tipoTexto(r){ return (r.tipo==='solo_vuelta') ? `Solo vuelta ${r.horaVuelta==='1600'?'4:00 pm':'5:30 pm'}` : (TIPO_LABEL[r.tipo]||r.tipo); }
 function byFilters(rs){
-  const fFecha = $('#f_fecha').value;
-  const fRuta = $('#f_ruta').value;
-  const fTipo = $('#f_tipo').value;
-  const fHoraV = $('#f_horaVuelta').value;
-  const q = ($('#f_buscar').value||'').trim().toLowerCase();
+  const fFecha=$('#f_fecha').value, fRuta=$('#f_ruta').value, fTipo=$('#f_tipo').value, fHoraV=$('#f_horaVuelta').value, q=($('#f_buscar').value||'').trim().toLowerCase();
   return rs
     .filter(x => !fFecha || x.fecha===fFecha)
     .filter(x => !fRuta || x.ruta===fRuta || x.tipo==='solo_vuelta')
@@ -413,7 +367,7 @@ function byFilters(rs){
 function render(){
   const rows = byFilters(registros).sort((a,b)=> (a.creadoEn?.seconds||0)-(b.creadoEn?.seconds||0));
   $('#totales').textContent = rows.length;
-  if(rows.length===0){ contTabla.innerHTML = `<div class="empty">Sin registros para los filtros actuales.</div>`; return; }
+  if(rows.length===0){ contTabla.innerHTML = `<div class="empty">Sin registros para los filtros actuales.</div>`; calcularDisponibles(); return; }
   const totalQ = rows.reduce((acc,r)=> acc + (r.precio||0), 0);
   let html = `<div class="row"><span class="muted">Recaudado (filtros):</span><b>Q${totalQ.toFixed(2)}</b></div>`;
   html += `<table><thead><tr>
@@ -443,156 +397,107 @@ function render(){
   calcularDisponibles();
 }
 
-/* ======= Listener de tabla (editar/eliminar) ======= */
+/* ======= Tabla acciones ======= */
 contTabla.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button'); if(!btn) return;
   const id = btn.dataset.id; const act = btn.dataset.act;
   if(act==='del'){
-    if(confirm('¿Eliminar este registro?')){
-      await deleteDoc(doc(collection(db,'reservas'), id));
-      toast('Eliminado.');
-    }
-  } else if(act==='edit'){
-    abrirEditar(id);
-  }
+    if(confirm('¿Eliminar este registro?')){ await deleteDoc(doc(collection(db,'reservas'), id)); toast('Eliminado.'); }
+  } else if(act==='edit'){ abrirEditar(id); }
 });
 
 /* ======= Filtros ======= */
-const fTipo = $('#f_tipo'), fHoraV = $('#f_horaVuelta'), fFecha = $('#f_fecha');
-fTipo.addEventListener('input', ()=>{
-  fHoraV.style.display = (fTipo.value==='solo_vuelta') ? 'block' : 'none';
-  if(fTipo.value!=='solo_vuelta'){ fHoraV.value=''; }
-  render();
-});
+const fTipo=$('#f_tipo'), fHoraV=$('#f_horaVuelta'), fFecha=$('#f_fecha');
+fTipo.addEventListener('input', ()=>{ fHoraV.style.display=(fTipo.value==='solo_vuelta')?'block':'none'; if(fTipo.value!=='solo_vuelta'){ fHoraV.value=''; } render(); });
 fHoraV.addEventListener('input', render);
 for(const id of ['f_ruta','f_buscar']) $('#'+id).addEventListener('input', render);
-function ensureSaturdayFilter(){
-  const v = fFecha.value;
-  if(!v) { render(); return; }
-  const dt = parseLocalISO(v);
-  if (dt.getDay() !== 6) {
-    fFecha.value = snapToNextSaturday(v);
-  }
-  render();
-}
+function ensureSaturdayFilter(){ const v=fFecha.value; if(!v){ render(); return; } const dt=parseLocalISO(v); if(dt.getDay()!==6){ fFecha.value=snapToNextSaturday(v); } render(); }
 fFecha.addEventListener('change', ensureSaturdayFilter);
-$('#btnFiltroSabado').addEventListener('click', ()=>{ $('#f_fecha').value = sabadoVigenteISO(); render(); });
+$('#btnFiltroSabado').addEventListener('click', ()=>{ $('#f_fecha').value=sabadoVigenteISO(); render(); });
 $('#btnResetFiltros').addEventListener('click', ()=>{ fFecha.value=''; $('#f_ruta').value=''; fTipo.value=''; fHoraV.value=''; fHoraV.style.display='none'; $('#f_buscar').value=''; render(); });
 
 /* ======= Export CSV & Whats ======= */
-function csv(v){ const s = (v??'').toString(); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s }
+function csv(v){ const s=(v??'').toString(); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s }
 $('#btnExportCSV').addEventListener('click', ()=>{
-  const rows = byFilters(registros);
-  if(rows.length===0) return toast('Sin datos para exportar.');
-  const head = ['#','Nombre','Universidad','Ruta','Parada','Tipo','Fecha','Precio','Telefono','Comentario'];
-  const lines = [head.join(',')];
+  const rows=byFilters(registros); if(rows.length===0) return toast('Sin datos para exportar.');
+  const head=['#','Nombre','Universidad','Ruta','Parada','Tipo','Fecha','Precio','Telefono','Comentario'];
+  const lines=[head.join(',')];
   rows.forEach((r,i)=>{
-    const rutaTxt = r.ruta ? `${r.ruta} ${RUTAS[r.ruta]?.nombre||''}` : '—';
-    const line = [
-      i+1, r.nombre, r.universidad, rutaTxt, r.parada||'',
-      tipoTexto(r), r.fecha, `Q${(r.precio||0).toFixed(2)}`, r.telefono||'', (r.comentario||'').replace(/[\r\n,]/g,' ')
-    ].map(csv).join(',');
+    const rutaTxt=r.ruta?`${r.ruta} ${RUTAS[r.ruta]?.nombre||''}`:'—';
+    const line=[i+1,r.nombre,r.universidad,rutaTxt,r.parada||'',tipoTexto(r),r.fecha,`Q${(r.precio||0).toFixed(2)}`,r.telefono||'',(r.comentario||'').replace(/[\r\n,]/g,' ')].map(csv).join(',');
     lines.push(line);
   });
-  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `bus_zacapa_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`bus_zacapa_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
 });
 $('#btnWhats').addEventListener('click', ()=>{
-  const rows = byFilters(registros);
-  if(rows.length===0) return toast('No hay registros.');
-  const f = $('#f_fecha').value || sabadoVigenteISO();
-  const rSel = $('#f_ruta').value;
-  const r = rSel ? `${rSel} (${RUTAS[rSel]?.nombre||''})` : 'Todas';
-  let t = $('#f_tipo').value ? TIPO_LABEL[$('#f_tipo').value] : 'Todos';
-  if($('#f_tipo').value==='solo_vuelta' && $('#f_horaVuelta').value){
-    t = `Solo vuelta ${$('#f_horaVuelta').value==='1600'?'4:00 pm':'5:30 pm'}`;
-  }
-  const totalQ = rows.reduce((acc,x)=> acc + (x.precio||0), 0);
-  let txt = `*Lista Bus Universitario*%0AFecha: ${f}%0ARuta: ${encodeURIComponent(r)}%0ATipo: ${encodeURIComponent(t)}%0ATotal: Q${totalQ.toFixed(2)}%0A%0A`;
-  rows.forEach((x,i)=>{
-    const rutaTxt = x.ruta ? `${x.ruta}` : '—';
-    txt += `${i+1}. ${encodeURIComponent(x.nombre)} — ${encodeURIComponent(x.universidad)} — ${encodeURIComponent(rutaTxt)} — ${encodeURIComponent(tipoTexto(x))} — Q${(x.precio||0).toFixed(2)}%0A`;
-  });
-  const url = `https://wa.me/?text=${txt}`;
-  window.open(url, '_blank');
+  const rows=byFilters(registros); if(rows.length===0) return toast('No hay registros.');
+  const f=$('#f_fecha').value||sabadoVigenteISO(); const rSel=$('#f_ruta').value; const r=rSel?`${rSel} (${RUTAS[rSel]?.nombre||''})`:'Todas';
+  let t=$('#f_tipo').value?TIPO_LABEL[$('#f_tipo').value]:'Todos';
+  if($('#f_tipo').value==='solo_vuelta' && $('#f_horaVuelta').value){ t=`Solo vuelta ${$('#f_horaVuelta').value==='1600'?'4:00 pm':'5:30 pm'}`; }
+  const totalQ=rows.reduce((acc,x)=>acc+(x.precio||0),0);
+  let txt=`*Lista Bus Universitario*%0AFecha: ${f}%0ARuta: ${encodeURIComponent(r)}%0ATipo: ${encodeURIComponent(t)}%0ATotal: Q${totalQ.toFixed(2)}%0A%0A`;
+  rows.forEach((x,i)=>{ const rutaTxt=x.ruta?`${x.ruta}`:'—'; txt+=`${i+1}. ${encodeURIComponent(x.nombre)} — ${encodeURIComponent(x.universidad)} — ${encodeURIComponent(rutaTxt)} — ${encodeURIComponent(tipoTexto(x))} — Q${(x.precio||0).toFixed(2)}%0A`; });
+  window.open(`https://wa.me/?text=${txt}`,'_blank');
 });
 
-/* ======= Crear (Firestore) ======= */
+/* ======= Crear ======= */
 $('#btnGuardar').addEventListener('click', async ()=>{
-  const nombre = $('#nombre').value.trim();
-  const telefono = $('#telefono').value.trim();
-  const uniSel = $('#universidad').value;
-  const universidad = uniSel === '_otra' ? $('#universidadOtra').value.trim() : uniSel;
-  const fecha = $('#fecha').value;
-  const ruta = $('#ruta').value;
-  const parada = $('#parada').value;
-  const tipo = $('#tipoViaje').value;
-  const horaVuelta = (tipo==='solo_vuelta') ? $('#horaVuelta').value : '';
-  const comentario = $('#comentario').value.trim();
+  const nombre=$('#nombre').value.trim();
+  const telefono=$('#telefono').value.trim();
+  const uniSel=$('#universidad').value;
+  const universidad= uniSel==='_otra' ? $('#universidadOtra').value.trim() : uniSel;
+  const fecha=$('#fecha').value;
+  const ruta=$('#ruta').value;
+  const parada=$('#parada').value;
+  const tipo=$('#tipoViaje').value;
+  const horaVuelta=(tipo==='solo_vuelta')?$('#horaVuelta').value:'';
+  const comentario=$('#comentario').value.trim();
 
-  if(!nombre || !universidad || !fecha || !tipo){ toast('Completa nombre, universidad, fecha y tipo.'); return; }
-  if (fecha !== sabadoVigenteISO()) { toast('Solo se permite registrar para el sábado vigente.'); return; }
+  if(!nombre||!universidad||!fecha||!tipo){ toast('Completa nombre, universidad, fecha y tipo.'); return; }
+  if(fecha!==sabadoVigenteISO()){ toast('Solo se permite registrar para el sábado vigente.'); return; }
   if(tipo==='solo_vuelta' && !horaVuelta){ toast('Selecciona la hora de vuelta.'); return; }
   if(tipo!=='solo_vuelta' && (!ruta || !parada)){ toast('Selecciona ruta y parada.'); return; }
 
-  // Duplicado local (sobre snapshot actual)
-  const dup = registros.some(r =>
-    r.nombre.toLowerCase()===nombre.toLowerCase() &&
-    r.universidad.toLowerCase()===universidad.toLowerCase() &&
-    r.fecha===fecha &&
-    r.tipo===tipo &&
-    (tipo==='solo_vuelta' ? (r.horaVuelta===horaVuelta) : (r.ruta===ruta))
-  );
+  // Duplicado local
+  const dup=registros.some(r=> r.nombre.toLowerCase()===nombre.toLowerCase() && r.universidad.toLowerCase()===universidad.toLowerCase() && r.fecha===fecha && r.tipo===tipo && (tipo==='solo_vuelta' ? (r.horaVuelta===horaVuelta) : (r.ruta===ruta)));
   if(dup){ toast('Registro duplicado para ese viaje.'); return; }
 
   // Capacidad
-  const key = (tipo==='solo_vuelta') ? `${fecha}|REGRESO|${tipo}|${horaVuelta}` : `${fecha}|${ruta}|${tipo}`;
-  const usados = registros.filter(x => claveCap(x) === key).length;
-  if(usados >= CAPACIDAD_POR_BUS){ toast('No hay asientos disponibles.'); return; }
+  const key=(tipo==='solo_vuelta')?`${fecha}|REGRESO|${tipo}|${horaVuelta}`:`${fecha}|${ruta}|${tipo}`;
+  const usados=registros.filter(x=>claveCap(x)===key).length;
+  if(usados>=CAPACIDAD_POR_BUS){ toast('No hay asientos disponibles.'); return; }
 
-  const jornadaId = sabadoVigenteISO();
-  const precio = PRECIO[tipo];
+  const jornadaId=sabadoVigenteISO();
+  const precio=PRECIO[tipo];
 
   try{
     await addDoc(collection(db,'reservas'), {
       nombre, telefono, universidad, fecha, ruta: ruta||'', parada: parada||'',
-      tipo, horaVuelta, comentario,
-      precio,
+      tipo, horaVuelta, comentario, precio,
       jornadaId,
       creadoEn: serverTimestamp()
     });
     $('#nombre').value=''; $('#telefono').value=''; $('#comentario').value='';
     toast('Guardado.');
-  }catch(e){
-    console.error(e); toast('No se pudo guardar.');
-  }
+  }catch(e){ console.error(e); toast('No se pudo guardar.'); }
 });
 
 /* ======= Edición ======= */
-const dlg = $('#dlg'); let editId = null;
+const dlg=$('#dlg'); let editId=null;
 function abrirEditar(id){
-  const r = registros.find(x=>x._id===id); if(!r) return;
-  editId = id;
-  const sab = sabadoVigenteISO();
-  const ef = $('#e_fecha'); ef.min = sab; ef.max = sab;
-
-  $('#e_nombre').value = r.nombre;
-  $('#e_telefono').value = r.telefono||'';
-  $('#e_universidad').value = r.universidad;
-  $('#e_parada').value = r.parada||'';
-  $('#e_fecha').value = r.fecha;
-  $('#e_tipo').value = r.tipo;
-  $('#e_horaVuelta').style.display = (r.tipo==='solo_vuelta') ? 'block' : 'none';
-  $('#e_horaVuelta').value = r.horaVuelta || '1600';
-  $('#e_ruta').value = r.ruta||'';
-  $('#e_comentario').value = r.comentario||'';
+  const r=registros.find(x=>x._id===id); if(!r) return;
+  editId=id;
+  const sab=sabadoVigenteISO(); const ef=$('#e_fecha'); ef.min=sab; ef.max=sab;
+  $('#e_nombre').value=r.nombre; $('#e_telefono').value=r.telefono||''; $('#e_universidad').value=r.universidad;
+  $('#e_parada').value=r.parada||''; $('#e_fecha').value=r.fecha; $('#e_tipo').value=r.tipo;
+  $('#e_horaVuelta').style.display=(r.tipo==='solo_vuelta')?'block':'none'; $('#e_horaVuelta').value=r.horaVuelta||'1600';
+  $('#e_ruta').value=r.ruta||''; $('#e_comentario').value=r.comentario||'';
   dlg.showModal();
 }
 $('#e_tipo').addEventListener('input', ()=>{ $('#e_horaVuelta').style.display = ($('#e_tipo').value==='solo_vuelta') ? 'block' : 'none'; });
 $('#e_cancelar').addEventListener('click', ()=> dlg.close());
 $('#e_guardar').addEventListener('click', async ()=>{
-  const nuevo = {
+  const nuevo={
     nombre: $('#e_nombre').value.trim(),
     telefono: $('#e_telefono').value.trim(),
     universidad: $('#e_universidad').value.trim(),
@@ -604,89 +509,51 @@ $('#e_guardar').addEventListener('click', async ()=>{
     comentario: $('#e_comentario').value.trim()
   };
   if(!nuevo.nombre||!nuevo.universidad||!nuevo.fecha||!nuevo.tipo){ toast('Completa los campos.'); return; }
-  if(nuevo.fecha !== sabadoVigenteISO()){ toast('Debe ser el sábado vigente.'); return; }
+  if(nuevo.fecha!==sabadoVigenteISO()){ toast('Debe ser el sábado vigente.'); return; }
   if(nuevo.tipo==='solo_vuelta' && !nuevo.horaVuelta){ toast('Selecciona la hora de la vuelta.'); return; }
   if(nuevo.tipo!=='solo_vuelta' && (!nuevo.ruta || !nuevo.parada)){ toast('Selecciona ruta y parada.'); return; }
-
-  // Evitar duplicados (excluyendo el mismo doc)
-  const dup = registros.some(x => x._id!==editId &&
-    x.nombre.toLowerCase()===nuevo.nombre.toLowerCase() &&
-    x.universidad.toLowerCase()===nuevo.universidad.toLowerCase() &&
-    x.fecha===nuevo.fecha &&
-    x.tipo===nuevo.tipo &&
-    (nuevo.tipo==='solo_vuelta' ? (x.horaVuelta===nuevo.horaVuelta) : (x.ruta===nuevo.ruta)));
-  if(dup){ toast('Ya existe un registro igual.'); return; }
-
-  nuevo.precio = PRECIO[nuevo.tipo];
-  try{
-    await updateDoc(doc(collection(db,'reservas'), editId), nuevo);
-    dlg.close(); toast('Actualizado.');
-  }catch(e){ console.error(e); toast('No se pudo actualizar.'); }
+  nuevo.precio=PRECIO[nuevo.tipo];
+  try{ await updateDoc(doc(collection(db,'reservas'), editId), nuevo); dlg.close(); toast('Actualizado.'); }
+  catch(e){ console.error(e); toast('No se pudo actualizar.'); }
 });
 
 /* ======= Login / Logout ======= */
-const btnLogin = $('#btnLogin'), btnLogout = $('#btnLogout');
+const btnLogin=$('#btnLogin'), btnLogout=$('#btnLogout');
 btnLogin.addEventListener('click', async ()=>{
   if(auth.currentUser){ toast('Ya hay sesión.'); return; }
-  const email = ($('#email').value||'').trim();
-  const pass  = ($('#password').value||'').trim();
+  const email=($('#email').value||'').trim(); const pass=($('#password').value||'').trim();
   if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Email inválido.'); return; }
   if(!pass){ toast('Ingresa tu contraseña.'); return; }
-  btnLogin.disabled = true;
-  try{
-    await signInWithEmailAndPassword(auth, email, pass);
-  }catch(e){
-    console.error(e);
-    const c = e?.code||'';
-    if(c==='auth/wrong-password') toast('Contraseña incorrecta.');
-    else if(c==='auth/user-not-found') toast('Usuario no existe.');
-    else toast('No se pudo iniciar sesión.');
-  }finally{ btnLogin.disabled = false; }
+  btnLogin.disabled=true;
+  try{ await signInWithEmailAndPassword(auth, email, pass); }
+  catch(e){ console.error(e); const c=e?.code||''; if(c==='auth/wrong-password') toast('Contraseña incorrecta.'); else if(c==='auth/user-not-found') toast('Usuario no existe.'); else toast('No se pudo iniciar sesión.'); }
+  finally{ btnLogin.disabled=false; }
 });
 btnLogout.addEventListener('click', async ()=>{ try{ await signOut(auth); }catch{} });
 
-/* ======= Arranque/paro de listeners SOLO con sesión ======= */
+/* ======= Listeners SOLO con sesión ======= */
 function startReservasListener(jornadaId){
   if(typeof unsubReservas==='function'){ unsubReservas(); unsubReservas=null; }
-  const qy = query(
-    collection(db,'reservas'),
-    where('jornadaId','==', jornadaId),
-    orderBy('creadoEn','asc')
-  );
-  unsubReservas = onSnapshot(qy, (snap)=>{
-    registros = snap.docs.map(d => ({ _id:d.id, ...d.data() }));
-    render(); calcularDisponibles();
+  const qy=query(collection(db,'reservas'), where('jornadaId','==', jornadaId), orderBy('creadoEn','asc'));
+  unsubReservas=onSnapshot(qy, (snap)=>{
+    registros=snap.docs.map(d=>({ _id:d.id, ...d.data() }));
+    render();
   }, (err)=>{
     console.error('[reservas]', err);
-    if((err?.code||'').includes('failed-precondition')) toast('Falta índice compuesto en Firestore.');
-    if((err?.code||'').includes('permission-denied')) toast('Sin permisos. Inicia sesión.');
+    const code=err?.code||'';
+    if(code.includes('failed-precondition')) toast('Falta índice compuesto en Firestore.');
+    if(code.includes('permission-denied')) toast('Sin permisos. Inicia sesión.');
   });
 }
-
 onAuthStateChanged(auth, (user)=>{
-  const estado = $('#estadoSesion');
-  const privado = $('#bloquePrivado');
-  if(user){
-    estado.textContent = `Conectado: ${user.email ?? 'anónimo'}`;
-    privado.style.display = '';
-    startReservasListener(sabadoVigenteISO());
-  }else{
-    estado.textContent = 'Sin sesión';
-    privado.style.display = 'none';
-    if(typeof unsubReservas==='function'){ unsubReservas(); unsubReservas=null; }
-    registros = []; render();
-  }
+  const estado=$('#estadoSesion'), privado=$('#bloquePrivado');
+  if(user){ estado.textContent=`Conectado: ${user.email ?? 'anónimo'}`; privado.style.display=''; startReservasListener(sabadoVigenteISO()); }
+  else{ estado.textContent='Sin sesión'; privado.style.display='none'; if(typeof unsubReservas==='function'){ unsubReservas(); unsubReservas=null; } registros=[]; render(); }
 });
 
-/* ======= Filtro sábado vigente al cargar ======= */
-$('#f_fecha').value = sabadoVigenteISO();
-
-/* ======= Paradas y capacidad inicial ======= */
-(function init(){
-  pintarParadas();
-  calcularDisponibles();
-  pintarCosto();
-})();
+/* ======= Config inicial ======= */
+$('#f_fecha').value=sabadoVigenteISO();
+pintarParadas(); calcularDisponibles(); pintarCosto();
 </script>
 </body>
 </html>
