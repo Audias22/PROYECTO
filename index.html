@@ -24,7 +24,6 @@
   .muted{color:var(--muted);font-size:12px}
   .section-title{margin:0 0 8px 0}
   .grid-2{display:grid;gap:12px}
-  @media(min-width:880px){ main{grid-template-columns:520px 1fr} .grid-2{grid-template-columns:1fr 1fr} }
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{border-top:1px solid var(--line);padding:10px;vertical-align:top}
   th{color:var(--muted);font-weight:600;text-align:left}
@@ -39,6 +38,46 @@
   .modal-b{padding:14px}
   .modal-f{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid #374151;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:1000}
+
+  /* ====== Responsive ====== */
+  @media(min-width:880px){
+    main{ grid-template-columns:520px 1fr; }
+    .grid-2{ grid-template-columns:1fr 1fr; }
+  }
+  /* Tabla -> tarjetas en móvil */
+  @media(max-width:880px){
+    .grid-2{ grid-template-columns:1fr !important; }
+    #btnGuardar{ width:100%; }
+    table.rwd{ width:100%; border-collapse:separate; border-spacing:0; }
+    table.rwd thead{ display:none; }
+    table.rwd, table.rwd tbody, table.rwd tr, table.rwd td{ display:block; width:100%; }
+    table.rwd tr{
+      margin:10px 0;
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
+      background:#0b1220;
+    }
+    table.rwd td{
+      border:0;
+      border-top:1px solid var(--line);
+      padding:10px 12px;
+      word-break:break-word;
+    }
+    table.rwd td:first-child{ border-top:0; }
+    table.rwd td::before{
+      content:attr(data-label);
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+    table.rwd td[data-label="Acciones"]{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+    }
+  }
 </style>
 </head>
 <body>
@@ -215,7 +254,7 @@
       </div>
     </aside>
 
-    <!-- ===== Tabla ===== -->
+    <!-- ===== Tabla / Tarjetas ===== -->
     <section class="card" style="grid-column:1 / -1">
       <h2 class="section-title">Lista de pasajeros</h2>
       <div id="contenedorTabla"></div>
@@ -271,13 +310,13 @@
 
 <script type="module">
 /* =========================
-   Firebase SDK (v10.12.4) por CDN
+   Firebase SDK por CDN (v10.12.4)
    ========================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-/* ====== TU CONFIG REAL (integrada) ====== */
+/* ====== Tu config REAL integrada ====== */
 const firebaseConfig = {
   apiKey: "AIzaSyDokAFIRVJRSkuusmS1qYZR_bZK0QMJXoQ",
   authDomain: "unibus-zacapa-prod.firebaseapp.com",
@@ -290,13 +329,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-/* ======= Helpers UI ======= */
+/* ======= Helpers ======= */
 const $ = s => document.querySelector(s);
 const toastEl = $('#toast');
 function toast(msg){ toastEl.textContent = msg; toastEl.style.display = 'block'; setTimeout(()=>toastEl.style.display='none', 2600); }
 function esc(s){ return (s??'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
 
-/* ======= Constantes negocio ======= */
+/* ======= Negocio ======= */
 const CAPACIDAD_POR_BUS = 45;
 const RUTAS = {
   A: { nombre: 'Bus A — San Vicente → Cabañas → Zacapa',
@@ -312,7 +351,7 @@ const TIPO_LABEL = {
 };
 const PRECIO = { ida_vuelta_1600:40, ida_vuelta_1730:40, solo_ida:20, solo_vuelta:20 };
 
-/* ======= Fechas ======= */
+/* ======= Fecha utils ======= */
 function toISODate(d){ return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function parseLocalISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y, m-1, d); }
 function sabadoVigenteISO(){ const now=new Date(); const delta=(6-now.getDay()+7)%7; const t=new Date(now); t.setHours(0,0,0,0); t.setDate(t.getDate()+delta); return toISODate(t); }
@@ -352,7 +391,7 @@ function pintarCosto(){ const t=$('#tipoViaje').value; $('#costoLbl').textConten
 function lockFechaFormularioAlSabado(){ const sab=sabadoVigenteISO(); const f=$('#fecha'); f.min=sab; f.max=sab; f.value=sab; }
 lockFechaFormularioAlSabado();
 
-/* ======= Render tabla ======= */
+/* ======= Render (tabla/ tarjetas responsive) ======= */
 const contTabla=$('#contenedorTabla');
 function tipoTexto(r){ return (r.tipo==='solo_vuelta') ? `Solo vuelta ${r.horaVuelta==='1600'?'4:00 pm':'5:30 pm'}` : (TIPO_LABEL[r.tipo]||r.tipo); }
 function byFilters(rs){
@@ -367,31 +406,40 @@ function byFilters(rs){
 function render(){
   const rows = byFilters(registros).sort((a,b)=> (a.creadoEn?.seconds||0)-(b.creadoEn?.seconds||0));
   $('#totales').textContent = rows.length;
-  if(rows.length===0){ contTabla.innerHTML = `<div class="empty">Sin registros para los filtros actuales.</div>`; calcularDisponibles(); return; }
+
+  if(rows.length===0){
+    contTabla.innerHTML = `<div class="empty">Sin registros para los filtros actuales.</div>`;
+    calcularDisponibles();
+    return;
+  }
+
   const totalQ = rows.reduce((acc,r)=> acc + (r.precio||0), 0);
   let html = `<div class="row"><span class="muted">Recaudado (filtros):</span><b>Q${totalQ.toFixed(2)}</b></div>`;
-  html += `<table><thead><tr>
+
+  html += `<table class="rwd"><thead><tr>
     <th>#</th><th>Nombre</th><th class="nowrap">Univ.</th><th>Ruta</th><th>Parada</th>
     <th>Tipo</th><th>Fecha</th><th>Precio</th><th>Teléfono</th><th>Comentario</th><th>Acciones</th>
   </tr></thead><tbody>`;
+
   rows.forEach((r,i)=>{
     html += `<tr>
-      <td>${i+1}</td>
-      <td>${esc(r.nombre)}</td>
-      <td>${esc(r.universidad)}</td>
-      <td>${r.ruta ? `<span class="pill">${r.ruta} · ${esc(RUTAS[r.ruta]?.nombre||'')}</span>` : '-'}</td>
-      <td>${esc(r.parada||'-')}</td>
-      <td>${esc(tipoTexto(r))}</td>
-      <td class="nowrap">${r.fecha}</td>
-      <td>Q${(r.precio||0).toFixed(2)}</td>
-      <td>${esc(r.telefono||'')}</td>
-      <td>${esc(r.comentario||'')}</td>
-      <td class="nowrap">
+      <td data-label="#">${i+1}</td>
+      <td data-label="Nombre">${esc(r.nombre)}</td>
+      <td data-label="Univ.">${esc(r.universidad)}</td>
+      <td data-label="Ruta">${r.ruta ? `<span class="pill">${r.ruta} · ${esc(RUTAS[r.ruta]?.nombre||'')}</span>` : '-'}</td>
+      <td data-label="Parada">${esc(r.parada||'-')}</td>
+      <td data-label="Tipo">${esc(tipoTexto(r))}</td>
+      <td data-label="Fecha" class="nowrap">${r.fecha}</td>
+      <td data-label="Precio">Q${(r.precio||0).toFixed(2)}</td>
+      <td data-label="Teléfono">${esc(r.telefono||'')}</td>
+      <td data-label="Comentario">${esc(r.comentario||'')}</td>
+      <td data-label="Acciones" class="nowrap">
         <button class="btn btn-secondary" data-act="edit" data-id="${r._id}">Editar</button>
         <button class="btn btn-danger" data-act="del" data-id="${r._id}">Eliminar</button>
       </td>
     </tr>`;
   });
+
   html += `</tbody></table>`;
   contTabla.innerHTML = html;
   calcularDisponibles();
@@ -551,9 +599,10 @@ onAuthStateChanged(auth, (user)=>{
   else{ estado.textContent='Sin sesión'; privado.style.display='none'; if(typeof unsubReservas==='function'){ unsubReservas(); unsubReservas=null; } registros=[]; render(); }
 });
 
-/* ======= Config inicial ======= */
+/* ======= Init filtros ======= */
 $('#f_fecha').value=sabadoVigenteISO();
 pintarParadas(); calcularDisponibles(); pintarCosto();
+
 </script>
 </body>
 </html>
